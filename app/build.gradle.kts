@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    kotlin("plugin.serialization") version "2.0.20"
 }
 
 android {
@@ -40,4 +41,7 @@ dependencies {
     implementation(libs.bundles.androidx.lifeycle)
     implementation(libs.androidx.activity.compose)
     implementation(libs.bundles.compose.ui)
+    implementation(libs.javax.inject)
+    implementation(libs.timber)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
