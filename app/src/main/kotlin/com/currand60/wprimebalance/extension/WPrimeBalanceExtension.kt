@@ -3,9 +3,8 @@ package com.currand60.wprimebalance.extension
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
-import javax.inject.Inject
 import timber.log.Timber
-
+import javax.inject.Inject
 
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1") {
     @Inject
