@@ -2,7 +2,13 @@
 <ExtensionInfo
     displayName="@string/extension_name"
     icon="@drawable/ic_launcher_foreground"
-    id="template-id"
+    id="wprimebalance"
     scansDevices="false">
-    <!-- DataType ... -->
+    <DataType
+        typeId="wprimebalance"
+        description="W' Balance'"
+        displayName="W' Balance"
+        graphical="false"
+        icon="@drawable/empty" />
+    <DataType... />
 </ExtensionInfo>

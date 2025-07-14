@@ -44,4 +44,5 @@ dependencies {
     implementation(libs.javax.inject)
     implementation(libs.timber)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation(libs.androidx.datastore.preferences)
 }

@@ -9,6 +9,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.currand60.wprimebalance.screens.MainScreen
+import timber.log.Timber
+
 
 @Composable
 fun Main() {
@@ -23,6 +25,14 @@ fun Main() {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (true) { // Make sure BuildConfig.DEBUG is available (it usually is by default)
+            Timber.plant(Timber.DebugTree())
+            Timber.d("Timber initialized in Debug mode.")
+        } else {
+            // For release builds, you might want a non-logging tree or a crash reporting tree
+            // Timber.plant(CrashReportingTree()) // Example for a custom release tree
+            Timber.d("Timber initialized in Release mode (no DebugTree planted).")
+        }
         setContent { Main() }
     }
 }
