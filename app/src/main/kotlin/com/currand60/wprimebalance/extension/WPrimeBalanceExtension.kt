@@ -5,6 +5,7 @@ import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1") {
     @Inject
@@ -15,9 +16,10 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1") {
             private set
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     override val types by lazy {
         listOf(
-            WPrimeBalanceDataType(karooSystem, "wprimebalance")
+            WPrimeBalanceDataType(karooSystem, applicationContext, "wprimebalance")
         )
     }
 

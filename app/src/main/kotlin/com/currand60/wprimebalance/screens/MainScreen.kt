@@ -52,7 +52,7 @@ fun MainScreen() {
     val configManager = remember { ConfigurationManager(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    var currentConfig by remember { mutableStateOf(ConfigData()) }
+    var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var wPrimeInput by remember { mutableStateOf("") }
     var criticalPowerInput by remember { mutableStateOf("") }
     var thresholdInput by remember { mutableStateOf("") }
@@ -63,7 +63,7 @@ fun MainScreen() {
 
     Timber.d("MainScreen created/recomposed.")
 
-    val loadedConfig by produceState(initialValue = ConfigData(), key1 = configManager) {
+    val loadedConfig by produceState(initialValue = ConfigData.DEFAULT, key1 = configManager) {
         Timber.d("Starting to load initial config via produceState.")
         value = configManager.getConfig()
         Timber.d("Initial config loaded: $value")
@@ -105,7 +105,7 @@ fun MainScreen() {
                 onValueChange = { newValue ->
                     Timber.d("W' input changed: $newValue")
                     wPrimeInput = newValue // Always update the string state first
-                    val parsedValue = newValue.toDoubleOrNull()
+                    val parsedValue = newValue.toIntOrNull()
                     if (parsedValue != null) {
                         currentConfig = currentConfig.copy(wPrime = parsedValue) // Update numerical state only if valid
                         wPrimeError = false
