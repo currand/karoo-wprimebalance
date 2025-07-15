@@ -1,5 +1,6 @@
 package  com.currand60.wprimebalance.extension
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp

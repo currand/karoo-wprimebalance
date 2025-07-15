@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
+import androidx.glance.text.Text
+import com.currand60.wprimebalance.extension.CustomSpeed
 import com.currand60.wprimebalance.extension.streamDataFlow
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -29,7 +31,7 @@ class WPrimeBalanceDataType(
     override fun startStream(emitter: Emitter<StreamState>) {
         Timber.d("start speed stream")
         val job = CoroutineScope(Dispatchers.IO).launch {
-            karooSystem.streamDataFlow(DataType.Type.SPEED).collect {
+            karooSystem.streamDataFlow(DataType.Type.CLOCK_TIME).collect {
                 when (it) {
                     is StreamState.Streaming -> {
                         // Transform speed data point into
@@ -56,20 +58,15 @@ class WPrimeBalanceDataType(
         Timber.d("Starting speed view with $emitter and config $config")
         val configJob = CoroutineScope(Dispatchers.IO).launch {
             // Show numeric speed data numerically
-            emitter.onNext(UpdateGraphicConfig(formatDataTypeId = DataType.Type.SPEED))
-            // Toggle header config forever
-            repeat(Int.MAX_VALUE) {
-                emitter.onNext(UpdateGraphicConfig(showHeader = it % 2 == 0))
-                delay(2000)
-            }
+            emitter.onNext(UpdateGraphicConfig(formatDataTypeId = DataType.Type.CLOCK_TIME))
             awaitCancellation()
         }
         val viewJob = CoroutineScope(Dispatchers.IO).launch {
-            karooSystem.streamDataFlow(DataType.Type.SPEED).collect {
+            karooSystem.streamDataFlow(DataType.Type.CLOCK_TIME).collect {
                 val speed = (it as? StreamState.Streaming)?.dataPoint?.singleValue?.toInt() ?: 0
                 Timber.d("Updating speed view ($emitter) with $speed")
                 val result = glance.compose(context, DpSize.Unspecified) {
-                    CustomSpeed(speed, config.alignment)
+                    Text(speed.toString())
                 }
                 emitter.updateView(result.remoteViews)
             }
