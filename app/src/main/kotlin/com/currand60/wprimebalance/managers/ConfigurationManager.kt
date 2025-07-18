@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -24,7 +23,6 @@ class ConfigurationManager(private val context: Context){
         private val THRESHOLD_KEY = intPreferencesKey("threshold")
     }
 
-    private val json = Json { ignoreUnknownKeys = true}
     val configFlow: Flow<ConfigData> = context.dataStore.data.map {
         preferences ->
         ConfigData(

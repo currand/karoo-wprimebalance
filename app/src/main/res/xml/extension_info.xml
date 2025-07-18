@@ -6,8 +6,8 @@
     scansDevices="false">
     <DataType
         typeId="wprimebalance"
-        description="W' Balance'"
-        displayName="W' Balance"
+        description="@string/app_name"
+        displayName="@string/app_name"
         graphical="false"
         icon="@drawable/empty" />
     <DataType... />

@@ -9,10 +9,8 @@ androidxComposeUi = "1.7.4"
 androidxComposeMaterial = "1.3.0"
 glance = "1.1.1"
 javaxInject = "1"
-kotlinxSerializationJson = "1.7.3"
-datastore = "1.1.7"
 datastorePreferences = "1.1.7"
-glanceAppwidgetPreview = "1.2.0-alpha01"
+junitJupiter = "5.8.1"
 
 
 [plugins]
@@ -40,10 +38,9 @@ androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidge
 androidx-glance-preview = { group = "androidx.glance", name = "glance-preview", version.ref = "glance" }
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-glance-appwidget-preview = { group = "androidx.glance", name = "glance-appwidget-preview", version = "1.1.1" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
 
 
 [bundles]

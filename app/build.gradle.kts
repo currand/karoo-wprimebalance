@@ -53,4 +53,5 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.preview)
     implementation(libs.androidx.glance.appwidget.preview)
+    testImplementation(libs.junit.jupiter)
 }

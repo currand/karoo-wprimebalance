@@ -1,173 +1,278 @@
 package com.currand60.wprimebalance.data
+
 import kotlin.math.exp
-import kotlin.math.max
+import kotlin.math.max // For max(0, power_above_cp)
 
-class WPrimeCalculator(initialCp60: Int, initialWPrimeUser: Int) {
+// ------------ W' Balance calculation -------------------
+// Global variables related to Cycling Power and W-Prime
+// uint16_t TAWC_Mode = 1;                   // Track Anaerobic Capacity Depletion Mode == TRUE -> APPLY and SHOW
+// uint16_t CP60 = 160;                      // Your (estimate of) Critical Power, more or less the same as FTP
+// uint16_t eCP = CP60;                      // Algorithmic estimate of Critical Power during intense workout
+// uint16_t w_prime_usr = 7500;              // Your (estimate of) W-prime or a base value
+// uint16_t ew_prime_mod = w_prime_usr;      // First order estimate of W-prime modified during intense workout
+// uint16_t ew_prime_test = w_prime_usr;     // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
+// long int w_prime_balance = 0;             // Can be negative !!!
+// bool IsShowWprimeValuesDominant = false;  // Boolean that determines to show W Prime data on Oled or not
+//-------------------------------------------------------
 
-    // Global variables from C++ (now class properties)
-    private var tawcMode: Int = 1
-    private var cp60: Int = initialCp60 // Initial CP, can be updated by algorithm
-    private var eCP: Int = initialCp60 // Algorithmic estimate of Critical Power during intense workout
-    private var wPrimeUser: Int = initialWPrimeUser // Your (estimate of) W-prime or a base value
-    private var ewPrimeMod: Int = initialWPrimeUser // First order estimate of W-prime modified during intense workout
-    private var ewPrimeTest: Int = initialWPrimeUser // 20-min-test algorithmic estimate
-    private var wPrimeBalance: Long = 0 // Can be negative !!!
+/**
+ * Kotlin class faithfully reproducing the provided C++ W' Balance calculation logic.
+ *
+ * Class initialization takes the user's estimated Critical Power (CP) and
+ * estimated W' in Joules. These directly map to the C++ global variables `CP60` and `w_prime_usr`.
+ *
+ * This implementation aims to maintain the structure of C++ functions and their
+ * conceptual "global" or `static` variables as closely as possible,
+ * without introducing optimizations or major structural changes beyond the language conversion.
+ *
+ * - C++ `uint16_t` is mapped to Kotlin `Int`.
+ * - C++ `long int` and `unsigned long int` are mapped to Kotlin `Long`.
+ * - C++ `double` is mapped to Kotlin `Double`.
+ * - C++ `bool` is mapped to Kotlin `Boolean`.
+ * - C++ `static` variables inside functions are mapped to private class properties to explicitly
+ *   preserve their state across function calls, reflecting `static` behavior.
+ * - C++ pass-by-reference (`&`) for class-level variables are handled by directly modifying
+ *   the corresponding class properties.
+ * - C++ `millis()` (Arduino-specific) is replaced by the provided `currentTimestampMillis` parameter
+ *   for calculating time deltas, as requested by the prompt.
+ */
+class WPrimeCalculator(
+    initialEstimatedCP: Int,          // Corresponds to C++ `CP60`
+    initialEstimatedWPrimeJoules: Int // Corresponds to C++ `w_prime_usr`
+) {
+    // --- Global variables from C++ code, translated as mutable class properties ---
+    var TAWC_Mode: Int = 1 // Track Anaerobic Capacity Depletion Mode == TRUE -> APPLY and SHOW
+    var CP60: Int = initialEstimatedCP // Your (estimate of) Critical Power, more or less the same as FTP
+    var eCP: Int // Algorithmic estimate of Critical Power during intense workout
+    var w_prime_usr: Int = initialEstimatedWPrimeJoules // Your (estimate of) W-prime or a base value
+    var ew_prime_mod: Int // First order estimate of W-prime modified during intense workout
+    var ew_prime_test: Int // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
+    var w_prime_balance: Long = 0L // Can be negative !!! (initialized to 0 as in C++ global scope)
 
-    // Static variables from C++ (now class properties to maintain state)
-    private var countPowerBelowCP: Long = 0
-    private var sumPowerBelowCP: Long = 0
-    private var sumPowerAboveCP: Long = 0
-    private var countPowerAboveCP: Long = 0
-    private var tLim: Double = 0.0 // Time (duration) while Power is above CP
-    private var timeSpent: Double = 0.0 // Total Time spent in the workout
-    private var runningSum: Double = 0.0
-    private var prevReadingTime: Long = 0 // Timestamp of the previous power reading
-    private var avPowerAboveCP: Int = 0 // Average power above CP
-    private var nextUpdateLevel: Long = 0 // The next level at which to update eCP, e_w_prime_mod and ew_prime_test
+    // --- Static variables from C++ functions, translated as private class properties to preserve state ---
+    // From `CalculateAveragePowerBelowCP` function
+    private var CountPowerBelowCP: Long = 0L
+    private var SumPowerBelowCP: Long = 0L
 
-    // Constants
-    private val nextLevelStep: Long = 1000 // Stepsize of the next level of w-prime modification
+    // From `CalculateAveragePowerAboveCP` function (and implicitly used in `w_prime_balance_waterworth`)
+    private var SumPowerAboveCP: Long = 0L // Sum for calculating average power above CP
+    private var CountPowerAboveCP: Long = 0L // Counter for calculating average power above CP (corresponds to `iCpACp` reference)
+    private var avPower: Int = 0 // Average power above CP (corresponds to `iavPwr` reference)
 
+    // From `w_prime_balance_waterworth` function
+    private var T_lim: Double = 0.0 // Time (duration) while Power is above CP
+    private var TimeSpent: Double = 0.0 // Total Time spent in the workout
+    private var running_sum: Double = 0.0
+    private val NextLevelStep: Long = 1000L // Stepsize of the next level of w-prime modification --> 1000 Joules step
+    private var NextUpdateLevel: Long = 0L // The next level at which to update eCP, e_w_prime_mod and ew_prime_test
+    private var PrevReadingTime: Long = 0L // Previous reading timestamp in milliseconds
+
+    // Constructor `init` block to perform initial setup equivalent to C++ global initialization sequence.
     init {
-        // Apply ConstrainW_PrimeValue logic during initialization
-        constrainWPrimeValue()
+        // C++ globals `eCP`, `ew_prime_mod`, `ew_prime_test` are initialized from `CP60` and `w_prime_usr`.
+        // The `ConstrainW_PrimeValue` function is typically called in C++ after initial global setup.
+        // We'll call it here to apply constraints to `CP60` and `w_prime_usr` immediately.
+        ConstrainW_PrimeValue() // This function directly modifies the class properties `CP60` and `w_prime_usr`.
+
+        // After `ConstrainW_PrimeValue` might have modified `CP60` or `w_prime_usr`,
+        // re-initialize other dependent class properties to reflect any changes.
+        eCP = CP60
+        ew_prime_mod = w_prime_usr
+        ew_prime_test = w_prime_usr
+    }
+
+    // ------------------------ W'Balance Functions -----------------------------------
+
+    // C++: uint16_t CalculateAveragePowerBelowCP(uint16_t iPower, uint16_t iCP);
+    private fun CalculateAveragePowerBelowCP(iPower: Int, iCP: Int): Int {
+        // C++ `static` variables `CountPowerBelowCP` and `SumPowerBelowCP` are now class properties.
+        if (iPower < iCP) {
+            SumPowerBelowCP += iPower.toLong() // Add `iPower` to `SumPowerBelowCP` (converted to Long to prevent overflow)
+            CountPowerBelowCP++ // Increment `CountPowerBelowCP`
+        }
+        // Handle division by zero scenario if `CountPowerBelowCP` is 0.
+        // The original C++ might lead to division by zero; returning 0 is a safe interpretation.
+        return if (CountPowerBelowCP > 0) {
+            (SumPowerBelowCP / CountPowerBelowCP).toInt() // Calculate and return average power below CP
+        } else {
+            0 // Return 0 if no power readings below CP have been recorded yet
+        }
+    }
+
+    // C++: void CalculateAveragePowerAboveCP(uint16_t iPower, uint16_t &iavPwr, unsigned long int &iCpACp);
+    // In Kotlin, `iavPwr` (conceptually `this.avPower`) and `iCpACp` (conceptually `this.CountPowerAboveCP`)
+    // are class properties that this function directly modifies to reflect the pass-by-reference behavior.
+    private fun CalculateAveragePowerAboveCP(iPower: Int) {
+        // C++ `static` variable `SumPowerAboveCP` is now a class property.
+        SumPowerAboveCP += iPower.toLong()
+        CountPowerAboveCP++ // This is the variable corresponding to `iCpACp` reference in C++
+        // Handle division by zero for the average calculation.
+        avPower = if (CountPowerAboveCP > 0) { // This is the variable corresponding to `iavPwr` reference in C++
+            (SumPowerAboveCP / CountPowerAboveCP).toInt() // Calculate average power above CP
+        } else {
+            0 // Return 0 if no power readings above CP have been recorded yet
+        }
+    }
+
+    // C++: double tau_w_prime_balance(uint16_t iPower, uint16_t iCP);
+    private fun tau_w_prime_balance(iPower: Int, iCP: Int): Double {
+        val avg_power_below_cp = CalculateAveragePowerBelowCP(iPower, iCP)
+        val delta_cp = (iCP - avg_power_below_cp).toDouble()
+        // Faithful reproduction of the C++ formula for tau
+        return (546.00 * exp(-0.01 * delta_cp) + 316.00)
+    }
+
+    // C++: void w_prime_balance_waterworth(uint16_t iPower, uint16_t iCP, uint16_t iw_prime);
+    // Modified to accept `currentTimestampMillis` as per the prompt's requirement
+    // to use the provided timestamp for time delta calculations instead of a global `millis()` call.
+    private fun w_prime_balance_waterworth(iPower: Int, iCP: Int, iw_prime: Int, currentTimestampMillis: Long) {
+        var power_above_cp: Int = 0 // Power > CP
+        var w_prime_expended: Double = 0.0 // Expended energy in Joules
+        var ExpTerm1: Double = 0.0
+        var ExpTerm2: Double = 0.0
+
+        // C++ `static` variables (e.g., `T_lim`, `TimeSpent`, `running_sum`, `NextUpdateLevel`, `PrevReadingTime`)
+        // are now class properties and retain their state across calls to this function.
+
+        // Determine the individual sample time in seconds, it may/will vary during the workout.
+        // C++: double SampleTime  = double(millis()-PrevReadingTime)/1000;
+        // Using the provided `currentTimestampMillis` for calculation.
+        val SampleTime: Double = (currentTimestampMillis - PrevReadingTime).toDouble() / 1000.0
+        PrevReadingTime = currentTimestampMillis // Update `PrevReadingTime` for the next sample
+
+        val tau = tau_w_prime_balance(iPower, iCP) // Determine the value for tau
+        TimeSpent += SampleTime // The summed value of all sample time values during the workout
+
+        power_above_cp = (iPower - iCP)
+
+        // #ifdef DEBUGAIR
+        // Serial.printf("Time:%6.1f ST: %4.2f tau: %f ", TimeSpent, SampleTime , tau);
+        // #endif
+
+        // w_prime is energy and measured in Joules = Watt*second.
+        // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
+        // C++: w_prime_expended = double(max(0, power_above_cp))*SampleTime;
+        w_prime_expended = max(0, power_above_cp).toDouble() * SampleTime // Calculates (Watts_above_CP) * (its duration in seconds)
+
+        // Calculate the exponential terms used in the W' balance equation.
+        ExpTerm1 = exp(TimeSpent / tau) // Exponential term 1
+        ExpTerm2 = exp(-TimeSpent / tau) // Exponential term 2
+
+        // #ifdef DEBUGAIR
+        // Serial.printf("W prime expended: %3.0f exp-term1: %f exp-term2: %f ", w_prime_expended , ExpTerm1, ExpTerm2);
+        // #endif
+
+        running_sum = running_sum + (w_prime_expended * ExpTerm1) // Determine the running sum
+
+        // #ifdef DEBUGAIR
+        // Serial.printf("Running Sum: %f ", running_sum);
+        // #endif
+
+        // C++: w_prime_balance = (long int)( (double)iw_prime - (running_sum*ExpTerm2) ) ;
+        // Calculate W' balance and cast the result to `Long` (equivalent to C++ `long int`).
+        w_prime_balance = (iw_prime.toDouble() - (running_sum * ExpTerm2)).toLong()
+
+        // #ifdef DEBUGAIR
+        // Serial.printf(" w_prime_balance: %d ", w_prime_balance);
+        // #endif
+
+        //--------------- extra --------------------------------------------------------------------------------------
+        // This section implements logic to dynamically update estimated CP and W' based on depletion levels.
+        if (power_above_cp > 0) {
+            // C++: CalculateAveragePowerAboveCP(iPower, avPower, CountPowerAboveCP);
+            // In Kotlin, `avPower` and `CountPowerAboveCP` are class properties directly modified by the function.
+            CalculateAveragePowerAboveCP(iPower)
+            T_lim += SampleTime // Time to exhaustion: accurate sum of every second spent above CP
+        }
+
+        // #ifdef DEBUGAIR
+        // Serial.printf(" [%d]\n", CountPowerAboveCP);
+        // #endif
+
+        // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
+        if ((w_prime_balance < NextUpdateLevel) && (w_prime_expended > 0)) {
+            NextUpdateLevel -= NextLevelStep // Move to the next lower depletion level
+            // C++: eCP = GetCPfromTwoParameterAlgorithm(avPower, T_lim, iw_prime);
+            // Note: C++ passes `double T_lim` to an `unsigned long` parameter; `T_lim.toLong()` mimics this.
+            eCP = GetCPfromTwoParameterAlgorithm(avPower, T_lim.toLong(), iw_prime) // Estimate a new `eCP` value
+            // C++: ew_prime_mod = w_prime_usr - NextUpdateLevel;
+            // `NextUpdateLevel` is `long int` in C++, converting to `Int` for `ew_prime_mod`.
+            ew_prime_mod = w_prime_usr - NextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
+            // C++: ew_prime_test = GetWPrimefromTwoParameterAlgorithm(uint16_t(eCP*1.045), double(1200), eCP);
+            ew_prime_test = GetWPrimefromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP) // 20-Min-test estimate for W-Prime
+
+            // #ifdef DEBUGAIR
+            // Serial.printf("Update of eCP - ew_prime %5d - avPower: %3d - T-lim:%6.1f --> eCP: %3d ", ew_prime_mod, avPower, T_lim, eCP);
+            // Serial.printf("--> Test estimate of W-Prime: %d \n", ew_prime_test );
+            // #endif
+        }
+        //-----------------extra -------------------------------------------------------------------------------
+    } // end w_prime_balance_waterworth
+
+    // C++: void ConstrainW_PrimeValue(uint16_t &iCP, uint16_t &iw_prime);
+    // This function directly modifies the class properties `CP60` and `w_prime_usr`
+    // to reflect the C++ pass-by-reference behavior on global-like variables.
+    private fun ConstrainW_PrimeValue() {
+        if (CP60 < 100) {
+            CP60 = 100 // Update `CP60` to the lowest allowed level
+        }
+        // First, determine the "minimal" value for W_Prime according to a 20-min-test estimate, given the `CP60` value.
+        // C++: uint16_t w_prime_estimate = GetWPrimefromTwoParameterAlgorithm(uint16_t(iCP*1.045), double(1200), iCP);
+        val w_prime_estimate = GetWPrimefromTwoParameterAlgorithm((CP60 * 1.045).toInt(), 1200.0, CP60)
+
+        if (w_prime_usr < w_prime_estimate) {
+            w_prime_usr = w_prime_estimate // Update `w_prime_usr` to a realistic level if it's too low
+        }
+    } // end ConstrainW_PrimeValue
+
+    // C++: uint16_t GetCPfromTwoParameterAlgorithm(uint16_t iav_Power, unsigned long iT_lim, uint16_t iw_prime);
+    private fun GetCPfromTwoParameterAlgorithm(iav_Power: Int, iT_lim: Long, iw_prime: Int): Int {
+        // C++: uint16_t WprimeDivTlim = uint16_t( double(iw_prime)/iT_lim );
+        val WprimeDivTlim = (iw_prime.toDouble() / iT_lim.toDouble()).toInt() // Type cast for correct calculations
+
+        if (iav_Power > WprimeDivTlim) { // Check for valid scope
+            return (iav_Power - WprimeDivTlim) // Solve 2-parameter algorithm to estimate CP
+        } else {
+            // C++: return eCP; // If something went wrong, return the global `eCP`.
+            return eCP // Return the class's current `eCP` property.
+        }
+    } // end GetCPfromTwoParameterAlgorithm
+
+    // C++: uint16_t GetWPrimefromTwoParameterAlgorithm(uint16_t iav_Power, double iT_lim, uint16_t iCP);
+    private fun GetWPrimefromTwoParameterAlgorithm(iav_Power: Int, iT_lim: Double, iCP: Int): Int {
+        if (iav_Power > iCP) { // Check for valid scope
+            // C++: return (iav_Power-iCP)*((uint16_t)iT_lim);
+            return (iav_Power - iCP) * iT_lim.toInt() // Solve 2-parameter algorithm to estimate new W-Prime
+        } else {
+            // C++: return w_prime_usr; // If something went wrong, return the global `w_prime_usr`.
+            return w_prime_usr // Return the class's current `w_prime_usr` property.
+        }
+    } // end GetWPrimefromTwoParameterAlgorithm
+
+    /**
+     * Calculates and updates the W' Prime Balance based on the instantaneous power and provided timestamp.
+     * This is the primary external method to interact with the calculator.
+     * It orchestrates the internal calculations by calling the faithfully reproduced
+     * `w_prime_balance_waterworth` function.
+     *
+     * @param instantaneousPower The current instantaneous power reading in Watts.
+     * @param currentTimeMillis The current timestamp of this power reading in milliseconds.
+     * @return The updated W' Prime Balance in Joules. Note: as per the original C++ code, this value can be negative.
+     */
+    fun calculateWPrimeBalance(instantaneousPower: Int, currentTimeMillis: Long): Long {
+        // Call the core C++ logic faithfully, passing along the necessary class properties
+        // and the current timestamp for time delta calculation.
+        w_prime_balance_waterworth(instantaneousPower, CP60, w_prime_usr, currentTimeMillis)
+
+        // Return the updated W' Prime Balance, which is a class property modified by the above function.
+        return w_prime_balance
     }
 
     fun getPreviousReadingTime(): Long {
-        return prevReadingTime
-    }
-    /**
-     * Calculates the W' Balance based on the current power reading and timestamp.
-     *
-     * @param iPower The instantaneous power reading in watts.
-     * @param currentTimestampMillis The current timestamp in milliseconds.
-     * @return The calculated W' Balance as a float.
-     */
-    fun updateAndGetWPrimeBalance(iPower: Int, currentTimestampMillis: Long): Long {
-        // Initialize prevReadingTime on the first call
-        if (prevReadingTime == 0L) {
-            prevReadingTime = currentTimestampMillis
-        }
-
-        // Determine the individual sample time in seconds
-        val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
-        prevReadingTime = currentTimestampMillis // Update for the next sample
-
-        // Determine the value for tau
-        val tau = tauWPrimeBalance(iPower, eCP)
-
-        timeSpent += sampleTime // The summed value of all sample time values during the workout
-
-        // Power > CP
-        val powerAboveCP = max(0, iPower - eCP)
-
-        // Determine the expended energy above CP since the previous measurement
-        // (Watts_above_CP) * (its duration in seconds) = expended energy in Joules!
-        val wPrimeExpended = powerAboveCP * sampleTime
-
-        // Calculate some terms of the equation
-        val expTerm1 = exp(timeSpent / tau)
-        val expTerm2 = exp(-timeSpent / tau)
-
-        runningSum = runningSum + (wPrimeExpended * expTerm1)
-
-        // Determine w prime balance
-        wPrimeBalance = (wPrimeUser - (runningSum * expTerm2)).toLong()
-
-        // --------------- extra --------------------------------------------------------------------------------------
-        // Workout starts at a certain W'= ##,### Joules and CP = ### watts, set by the user; the algorithm increases CP and W' stepwise
-        // to more realistic values every time when W'balance is depleted to a certain level; -> 2-Parameter Algorithm updates CP and W'
-        if (powerAboveCP > 0) {
-            // Average power above CP is to be calculated for future use
-            calculateAveragePowerAboveCP(iPower)
-            // Time to exhaustion: the accurate sum of every second spent above CP, calculated for future use
-            tLim += sampleTime
-        }
-
-        // When working above CP, the moment comes that we need to update eCP and ew_prime !!
-        // W' balance is further depleted --> test for an update moment
-        if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
-            nextUpdateLevel -= nextLevelStep // Move down another level of depletion, update eCP, ew_prime_mod and ew_prime_test
-            eCP = getCPFromTwoParameterAlgorithm(avPowerAboveCP, tLim, wPrimeUser) // Estimate a new eCP value
-            ewPrimeMod = wPrimeUser - nextUpdateLevel.toInt() // Adjust ew_prime_modified
-            // 20-Min-test estimate for W-Prime
-            ewPrimeTest = getWPrimeFromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP)
-        }
-        // -----------------extra -------------------------------------------------------------------------------
-
-        return wPrimeBalance
+        return PrevReadingTime
     }
 
-    /**
-     * Helper function to calculate average power below CP.
-     * Note: This function's average is a running average of ALL power readings below CP,
-     * not just those in the current window.
-     */
-    private fun calculateAveragePowerBelowCP(iPower: Int, iCP: Int): Int {
-        if (iPower < iCP) {
-            sumPowerBelowCP += iPower.toLong()
-            countPowerBelowCP++
-        }
-        return if (countPowerBelowCP > 0) (sumPowerBelowCP / countPowerBelowCP).toInt() else 0
-    }
-
-    /**
-     * Helper function to calculate average power above CP.
-     * Updates internal class members.
-     */
-    private fun calculateAveragePowerAboveCP(iPower: Int) {
-        sumPowerAboveCP += iPower.toLong()
-        countPowerAboveCP++
-        avPowerAboveCP = if (countPowerAboveCP > 0) (sumPowerAboveCP / countPowerAboveCP).toInt() else 0
-    }
-
-    /**
-     * Determines the value for tau_w_prime_balance.
-     */
-    private fun tauWPrimeBalance(iPower: Int, iCP: Int): Double {
-        val avgPowerBelowCP = calculateAveragePowerBelowCP(iPower, iCP)
-        val deltaCP = (iCP - avgPowerBelowCP).toDouble()
-        return (546.00 * exp(-0.01 * deltaCP) + 316.00)
-    }
-
-    /**
-     * Check and Set starting value of w_prime to realistic numbers!!
-     * This logic is applied during initialization.
-     */
-    private fun constrainWPrimeValue() {
-        if (cp60 < 100) {
-            cp60 = 100
-            eCP = 100 // Also update eCP
-        }
-        // First determine the "minimal" value for W_Prime according to a 20-min-test estimate, given the iCP value!
-        val wPrimeEstimate = getWPrimeFromTwoParameterAlgorithm((cp60 * 1.045).toInt(), 1200.0, cp60)
-        if (wPrimeUser < wPrimeEstimate) {
-            wPrimeUser = wPrimeEstimate
-            ewPrimeMod = wPrimeEstimate // Also update modified W'
-            ewPrimeTest = wPrimeEstimate // Also update test W'
-        }
-    }
-
-    /**
-     * Solves 2-parameter algorithm to estimate CP.
-     */
-    private fun getCPFromTwoParameterAlgorithm(iavPower: Int, iTlim: Double, iwPrime: Int): Int {
-        val wPrimeDivTlim = iwPrime.toDouble() / iTlim
-        return if (iavPower > wPrimeDivTlim) { // test for out of scope
-            (iavPower - wPrimeDivTlim).toInt()
-        } else {
-            eCP // Something went wrong don't allow an update of CP, use current eCP
-        }
-    }
-
-    /**
-     * Solves 2-parameter algorithm to estimate new W-Prime.
-     */
-    private fun getWPrimeFromTwoParameterAlgorithm(iavPower: Int, iTlim: Double, iCP: Int): Int {
-        return if (iavPower > iCP) { // test for out of scope
-            ((iavPower - iCP) * iTlim).toInt()
-        } else {
-            wPrimeUser // Something went wrong don't allow an update of w_prime, use user W'
-        }
+    fun getCurrentEstimatedCP(): Int {
+        return eCP
     }
 }

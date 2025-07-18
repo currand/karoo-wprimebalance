@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import com.currand60.wprimebalance.theme.AppTheme
-import io.hammerhead.karooext.KarooSystemService
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -47,8 +46,6 @@ import timber.log.Timber
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val karooSystem = remember { KarooSystemService(context) }
     val configManager = remember { ConfigurationManager(context) }
     val coroutineScope = rememberCoroutineScope()
 

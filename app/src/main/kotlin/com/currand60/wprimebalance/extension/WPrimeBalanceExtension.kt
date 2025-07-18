@@ -1,15 +1,21 @@
 package com.currand60.wprimebalance.extension
 
+import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import timber.log.Timber
-import javax.inject.Inject
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1") {
-    @Inject
+@OptIn(ExperimentalGlanceRemoteViewsApi::class)
+
+class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.2") {
+
     lateinit var karooSystem: KarooSystemService
+
+    init {
+        Timber.d("WPrimeBalanceExtension created")
+    }
 
     companion object {
         lateinit var instance: WPrimeBalanceExtension
@@ -19,7 +25,7 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1") {
     @OptIn(ExperimentalAtomicApi::class)
     override val types by lazy {
         listOf(
-            WPrimeBalanceDataType(karooSystem, applicationContext, "wprimebalance")
+            WPrimeBalanceDataType(karooSystem, applicationContext,"wprimebalance")
         )
     }
 
