@@ -172,9 +172,9 @@ class WPrimeCalculator(
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
             nextUpdateLevel -= nextLevelStep // Move to the next lower depletion level
-            eCP = getCPfromTwoParameterAlgorithm(avPower, iTLim.toLong(), iwPrime) // Estimate a new `eCP` value
+            eCP = getCpFromTwoParameterAlgorithm(avPower, iTLim.toLong(), iwPrime) // Estimate a new `eCP` value
             ewPrimeMod = wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
-            ewPrimeTest = GetWPrimefromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP) // 20-Min-test estimate for W-Prime
+            ewPrimeTest = getWPrimeFromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP) // 20-Min-test estimate for W-Prime
 
             // #ifdef DEBUGAIR
             // Serial.printf("Update of eCP - ew_prime %5d - avPower: %3d - T-lim:%6.1f --> eCP: %3d ", ew_prime_mod, avPower, T_lim, eCP);
@@ -188,14 +188,14 @@ class WPrimeCalculator(
             CP60 = 100 // Update `CP60` to the lowest allowed level
         }
         // First, determine the "minimal" value for W_Prime according to a 20-min-test estimate, given the `CP60` value.
-        val w_prime_estimate = GetWPrimefromTwoParameterAlgorithm((CP60 * 1.045).toInt(), 1200.0, CP60)
+        val w_prime_estimate = getWPrimeFromTwoParameterAlgorithm((CP60 * 1.045).toInt(), 1200.0, CP60)
 
         if (wPrimeUsr < w_prime_estimate) {
             wPrimeUsr = w_prime_estimate // Update `w_prime_usr` to a realistic level if it's too low
         }
     }
 
-    private fun getCPfromTwoParameterAlgorithm(iavPower: Int, iTLim: Long, iwPrime: Int): Int {
+    private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Long, iwPrime: Int): Int {
         val wPrimeDivTLim = (iwPrime.toDouble() / iTLim.toDouble()).toInt() // Type cast for correct calculations
 
         if (iavPower > wPrimeDivTLim) { // Check for valid scope
@@ -205,7 +205,8 @@ class WPrimeCalculator(
         }
     }
 
-    private fun GetWPrimefromTwoParameterAlgorithm(iav_Power: Int, iT_lim: Double, iCP: Int): Int {
+    @Suppress("SameParameterValue")
+    private fun getWPrimeFromTwoParameterAlgorithm(iav_Power: Int, iT_lim: Double, iCP: Int): Int {
         if (iav_Power > iCP) { // Check for valid scope
             // C++: return (iav_Power-iCP)*((uint16_t)iT_lim);
             return (iav_Power - iCP) * iT_lim.toInt() // Solve 2-parameter algorithm to estimate new W-Prime

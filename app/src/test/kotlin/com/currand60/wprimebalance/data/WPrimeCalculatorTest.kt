@@ -110,7 +110,6 @@ class WPrimeCalculatorTest {
         val initialBalance = calculator.calculateWPrimeBalance(0, System.currentTimeMillis()) // Initialize prevReadingTime
         var currentOverallTime = System.currentTimeMillis() + 1000 // Start time for the loop, ensure it's after initial call
 
-// Example: List of (Power, DurationMillis)
         val powerSteps: List<Pair<Int, Int>> = listOf(
             (defaultInitialCp60 - 40) to 100000, // Starting baseline
             (defaultInitialCp60 + 35) to 840000,
@@ -129,20 +128,14 @@ class WPrimeCalculatorTest {
 
             Timber.d("Processing power step: Power=$instantaneousPower W for ${durationForThisStepMillis / 1000}s")
 
+            @Suppress("UNUSED_VARIABLE")
             for (elapsedTimeInStep in 0 until durationForThisStepMillis step stepIntervalMillis) {
-                // Increment the overall current time for the calculator
                 currentOverallTime += stepIntervalMillis
 
-                // Call the calculator with the current power and updated time
                 newBalance = calculator.calculateWPrimeBalance(instantaneousPower, currentOverallTime)
 
-                // Optional: Log the balance at each 1-second interval if needed for debugging
                 Timber.d("Time: ${currentOverallTime / 1000}s (in step), Power: $instantaneousPower W, W'Bal: $newBalance J")
-
-                // Optional: Add assertions here if you expect a certain state after each second,
-                // though typically assertions are at the end of a full step or the whole sequence.
             }
-            // Optional: Log or assert after each full powerStep duration is completed
             Timber.d("Completed power step: Power=$instantaneousPower W. Final W'Bal for step: $newBalance J")
         }
 
