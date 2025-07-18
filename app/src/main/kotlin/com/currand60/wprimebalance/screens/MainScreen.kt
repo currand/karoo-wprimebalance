@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,11 +54,9 @@ fun MainScreen() {
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var wPrimeInput by remember { mutableStateOf("") }
     var criticalPowerInput by remember { mutableStateOf("") }
-    var thresholdInput by remember { mutableStateOf("") }
 
     var wPrimeError by remember { mutableStateOf(false) }
     var criticalPowerError by remember { mutableStateOf(false) }
-    var thresholdError by remember { mutableStateOf(false) }
 
     Timber.d("MainScreen created/recomposed.")
 
@@ -72,7 +72,6 @@ fun MainScreen() {
             // Initialize the input string states from the loaded numerical values
             wPrimeInput = loadedConfig.wPrime.toString()
             criticalPowerInput = loadedConfig.criticalPower.toString()
-            thresholdInput = loadedConfig.threshold.toString()
             Timber.d("currentConfig and input fields updated from loadedConfig: $currentConfig")
         }
     }
@@ -94,7 +93,7 @@ fun MainScreen() {
             Spacer(modifier = Modifier.height(4.dp))
 
             // W' (W-prime) input field
-            Text("W' in kilojoules", Modifier.padding(start = 5.dp))
+            Text("W' in Joules", Modifier.padding(start = 5.dp))
             OutlinedTextField(
                 value = wPrimeInput, // Bound to the string input state
                 modifier = Modifier.fillMaxWidth()
@@ -114,7 +113,7 @@ fun MainScreen() {
                     }
                 },
                 placeholder = { Text("${currentConfig.wPrime}") },
-                suffix = { Text("kj") },
+                suffix = { Text("J") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 isError = wPrimeError,
@@ -154,36 +153,29 @@ fun MainScreen() {
                     }
                 }
             )
-            Text( text="Threshold", Modifier.padding(start = 5.dp))
-            // FTP (Threshold) input field
-            OutlinedTextField(
-                value = thresholdInput, // Bound to the string input state
-                modifier = Modifier.fillMaxWidth()
-                    .padding(start = 5.dp, end = 5.dp),
-                onValueChange = { newValue ->
-                    Timber.d("FTP input changed: $newValue")
-                    thresholdInput = newValue // Always update the string state
-                    val parsedValue = newValue.toIntOrNull()
-                    if (parsedValue != null) {
-                        currentConfig = currentConfig.copy(threshold = parsedValue)
-                        thresholdError = false
-                        Timber.d("FTP parsed successfully: $parsedValue, currentConfig: $currentConfig")
-                    } else {
-                        thresholdError = newValue.isNotBlank()
-                        Timber.w("Invalid FTP input: '$newValue'. Error status: $thresholdError")
+            Row(
+                modifier = Modifier.padding(start = 5.dp),
+            ) {
+                Switch(
+                    checked = currentConfig.calculateCp,
+                    onCheckedChange = {
+                        currentConfig = currentConfig.copy(calculateCp = !currentConfig.calculateCp)
+                        Timber.d("CP calculation toggle: ${currentConfig.calculateCp}")
                     }
-                },
-                placeholder = { Text("${currentConfig.threshold}") },
-                suffix = { Text("W") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                isError = thresholdError,
-                supportingText = {
-                    if (thresholdError) {
-                        Text("Please enter a valid integer")
-                    }
-                }
-            )
+                )
+                Text(
+                    modifier = Modifier.padding(start = 5.dp)
+                        .align(Alignment.CenterVertically),
+                    text = "Estimate CP mid-ride",
+                )
+            }
+            Box (modifier = Modifier
+                .fillMaxWidth()
+                .padding(5.dp)
+            ) {
+                Text("Enter your W' in Joules and CP if you know them. If you are unsure " +
+                        "Enter your best guess and select the option to calculate it mid-ride.")
+            }
             // Save Button
             FilledTonalButton(
                 modifier = Modifier
@@ -191,8 +183,8 @@ fun MainScreen() {
                     .height(50.dp)
                     .padding(vertical = 8.dp),
                 onClick = {
-                    Timber.d("Save button clicked. Current errors: W'=$wPrimeError, CP=$criticalPowerError, FTP=$thresholdError")
-                    if (!wPrimeError && !criticalPowerError && !thresholdError) {
+                    Timber.d("Save button clicked. Current errors: W'=$wPrimeError, CP=$criticalPowerError")
+                    if (!wPrimeError && !criticalPowerError) {
                         coroutineScope.launch {
                             Timber.d("Attempting to save currentConfig: $currentConfig")
                             configManager.saveConfig(currentConfig)
@@ -206,7 +198,7 @@ fun MainScreen() {
                         // karooSystem.showToast("Please correct the errors before saving.")
                     }
                 },
-                enabled = !wPrimeError && !criticalPowerError && !thresholdError
+                enabled = !wPrimeError && !criticalPowerError
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Save")
                 Spacer(modifier = Modifier.width(5.dp))

@@ -1,19 +1,31 @@
-# Karoo Extensions (Template)
+# Karoo W' Balance Extension
 
-Template repository for empty app with Karoo Extension service.
+A Hammerhead Karoo extension to display the W' Balance (sometimes referred to as Functional Reserve Capacity).
+The formula and basis of the code for calculation comes from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
 
-## Instructions
 
-1. Clone this repository or "Use this template" on Github
-2. Update namespace in `build.gradle.kt` and `app/src/main/kotlin`
-3. Replace "template" values in `strings.xml`, `extension_info.xml`, `AndroidManifest.xml`
-4. Implement Android app experience (in `MainActivity.kt`)
-5. Implement extension functionality in `TemplateExtension.kt`
+## Requirements
+- Karoo (tested on last Karoo ) with version 1.527 or later
+- A relatively accurate assessment of your 60-minute Critical Power (CP60) or your Functional Threshold Power (FTP)
+- A power meter
+
+## Installation
+
+You can sideload the app using the following steps for Karoo 2
+
+1. Download the APK from the releases .
+2. Prepare your Karoo for sideloading by following the [step-by-step guide](https://www.dcrainmaker.com/2021/02/how-to-sideload-android-apps-on-your-hammerhead-karoo-1-karoo-2.html) by DC Rainmaker.
+3. Install the app using the command `adb install app-release.apk`.
+
+
+If you've Karoo 3 and v > 1.527 you can sideload the app using the following steps:
+
+1. Link with apk (releases link) from your mobile ( _TODO_ )
+2. Share with Hammerhead companion app
+3. Install the app using the Hammerhead companion app.
+
+**It's mandatory to reset the Karoo after the installation (shutdown and start again).**
 
 ## Links
 
-[Documentation](https://hammerheadnav.github.io/karoo-ext/index.html)
-
-[karoo-ext source](https://github.com/hammerheadnav/karoo-ext)
-
-[Sample](https://github.com/hammerheadnav/karoo-ext/tree/master/app)
+[RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power)

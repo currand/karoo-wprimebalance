@@ -1,4 +1,4 @@
-package com.currand60.wprimebalance.extension
+package com.currand60.wprimebalance.extensions
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType

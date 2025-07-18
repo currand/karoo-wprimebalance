@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.currand60.wprimebalance"
     compileSdk = 34
+    testOptions { unitTests.all { it.useJUnitPlatform() } }
 
     defaultConfig {
         applicationId = "com.currand60.wprimebalance"

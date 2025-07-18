@@ -2,8 +2,7 @@ package com.currand60.wprimebalance.data
 
 import android.content.Context
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
-import androidx.glance.appwidget.GlanceRemoteViews
-import com.currand60.wprimebalance.extension.streamDataFlow
+import com.currand60.wprimebalance.extensions.streamDataFlow
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -31,7 +30,6 @@ class WPrimeBalanceDataType(
 ) : DataTypeImpl(extension, "wprimebalance") {
 
     private val configurationManager = ConfigurationManager(context)
-    private val glance = GlanceRemoteViews()
     private val calculatorRef = AtomicReference<WPrimeCalculator?>(null)
     private var latestConfig: ConfigData = ConfigData.DEFAULT
     private var lastCp60: Int = 0
@@ -55,7 +53,9 @@ class WPrimeBalanceDataType(
                 // If there was a long pause, use the last CP60 value calculated mid-ride, otherwise use
                 // the value from ConfigManager
                 initialEstimatedCP = lastCp60.takeIf { it > 0 } ?: latestConfig.criticalPower,
-                initialEstimatedWPrimeJoules = latestConfig.wPrime
+                initialEstimatedWPrimeJoules = latestConfig.wPrime,
+                currentTimeMillis = System.currentTimeMillis(),
+                useEstimatedCp = latestConfig.calculateCp
             )
             calculatorRef.store(calculator)
         }
