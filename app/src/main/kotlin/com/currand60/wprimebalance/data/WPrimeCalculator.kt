@@ -1,47 +1,21 @@
 package com.currand60.wprimebalance.data
 
+import timber.log.Timber
 import kotlin.math.exp
-import kotlin.math.max // For max(0, power_above_cp)
-
-// ------------ W' Balance calculation -------------------
-// Global variables related to Cycling Power and W-Prime
-// uint16_t TAWC_Mode = 1;                   // Track Anaerobic Capacity Depletion Mode == TRUE -> APPLY and SHOW
-// uint16_t CP60 = 160;                      // Your (estimate of) Critical Power, more or less the same as FTP
-// uint16_t eCP = CP60;                      // Algorithmic estimate of Critical Power during intense workout
-// uint16_t w_prime_usr = 7500;              // Your (estimate of) W-prime or a base value
-// uint16_t ew_prime_mod = w_prime_usr;      // First order estimate of W-prime modified during intense workout
-// uint16_t ew_prime_test = w_prime_usr;     // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
-// long int w_prime_balance = 0;             // Can be negative !!!
-//-------------------------------------------------------
+import kotlin.math.max
 
 /**
- * Kotlin class faithfully reproducing the provided C++ W' Balance calculation logic.
- *
- * Class initialization takes the user's estimated Critical Power (CP) and
- * estimated W' in Joules. These directly map to the C++ global variables `CP60` and `w_prime_usr`.
- *
- * This implementation aims to maintain the structure of C++ functions and their
- * conceptual "global" or `static` variables as closely as possible,
- * without introducing optimizations or major structural changes beyond the language conversion.
- *
- * - C++ `uint16_t` is mapped to Kotlin `Int`.
- * - C++ `long int` and `unsigned long int` are mapped to Kotlin `Long`.
- * - C++ `double` is mapped to Kotlin `Double`.
- * - C++ `bool` is mapped to Kotlin `Boolean`.
- * - C++ `static` variables inside functions are mapped to private class properties to explicitly
- *   preserve their state across function calls, reflecting `static` behavior.
- * - C++ pass-by-reference (`&`) for class-level variables are handled by directly modifying
- *   the corresponding class properties.
- * - C++ `millis()` (Arduino-specific) is replaced by the provided `currentTimestampMillis` parameter
- *   for calculating time deltas, as requested by the prompt.
+ Reproduced from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
+ Extremely heavy use of AI to convert to Kotlin from C++ and a bunch of vibe coding
+ Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
  */
+
 class WPrimeCalculator(
-    initialEstimatedCP: Int,          // Corresponds to C++ `CP60`
-    initialEstimatedWPrimeJoules: Int, // Corresponds to C++ `w_prime_usr`
+    initialEstimatedCP: Int,
+    initialEstimatedWPrimeJoules: Int,
     currentTimeMillis: Long,
     private var useEstimatedCp: Boolean = false
 ) {
-    // --- Global variables from C++ code, translated as mutable class properties ---
     var CP60: Int = initialEstimatedCP // Your (estimate of) Critical Power, more or less the same as FTP
     var eCP: Int // Algorithmic estimate of Critical Power during intense workout
     var wPrimeUsr: Int = initialEstimatedWPrimeJoules // Your (estimate of) W-prime or a base value
@@ -126,9 +100,7 @@ class WPrimeCalculator(
 
         val powerAboveCp = (iPower - iCP)
 
-        // #ifdef DEBUGAIR
-        // Serial.printf("Time:%6.1f ST: %4.2f tau: %f ", TimeSpent, SampleTime , tau);
-        // #endif
+        Timber.d("Time:${timeSpent.toDouble()} ST: ${sampleTime.toDouble()} tau: $tau")
 
         // w_prime is energy and measured in Joules = Watt*second.
         // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
@@ -138,36 +110,22 @@ class WPrimeCalculator(
         val expTerm1 = exp(timeSpent / tau) // Exponential term 1
         val expTerm2 = exp(-timeSpent / tau) // Exponential term 2
 
-        // #ifdef DEBUGAIR
-        // Serial.printf("W prime expended: %3.0f exp-term1: %f exp-term2: %f ", w_prime_expended , ExpTerm1, ExpTerm2);
-        // #endif
+        Timber.d("W prime expended: ${wPrimeExpended.toInt()} exp-term1: $expTerm1 exp-term2: $expTerm2 ")
 
         runningSum = runningSum + (wPrimeExpended * expTerm1) // Determine the running sum
 
-        // #ifdef DEBUGAIR
-        // Serial.printf("Running Sum: %f ", running_sum);
-        // #endif
+        Timber.d("Running Sum: $runningSum")
 
-        // C++: w_prime_balance = (long int)( (double)iw_prime - (running_sum*ExpTerm2) ) ;
-        // Calculate W' balance and cast the result to `Long` (equivalent to C++ `long int`).
         wPrimeBalance = (iwPrime.toDouble() - (runningSum * expTerm2)).toLong()
-
-        // #ifdef DEBUGAIR
-        // Serial.printf(" w_prime_balance: %d ", w_prime_balance);
-        // #endif
 
         //--------------- extra --------------------------------------------------------------------------------------
         // This section implements logic to dynamically update estimated CP and W' based on depletion levels.
         if (powerAboveCp > 0) {
-            // C++: CalculateAveragePowerAboveCP(iPower, avPower, CountPowerAboveCP);
-            // In Kotlin, `avPower` and `CountPowerAboveCP` are class properties directly modified by the function.
             calculateAveragePowerAboveCP(iPower)
             iTLim += sampleTime // Time to exhaustion: accurate sum of every second spent above CP
         }
 
-        // #ifdef DEBUGAIR
-        // Serial.printf(" [%d]\n", CountPowerAboveCP);
-        // #endif
+        Timber.d(" [$CountPowerAboveCP]")
 
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
@@ -176,10 +134,7 @@ class WPrimeCalculator(
             ewPrimeMod = wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
             ewPrimeTest = getWPrimeFromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP) // 20-Min-test estimate for W-Prime
 
-            // #ifdef DEBUGAIR
-            // Serial.printf("Update of eCP - ew_prime %5d - avPower: %3d - T-lim:%6.1f --> eCP: %3d ", ew_prime_mod, avPower, T_lim, eCP);
-            // Serial.printf("--> Test estimate of W-Prime: %d \n", ew_prime_test );
-            // #endif
+            Timber.d("Update of eCP - ew_prime $ewPrimeMod - avPower: $avPower - T-lim:$iTLim --> eCP: $eCP --> Test estimate of W-Prime: $ewPrimeTest")
         }
     }
 
@@ -208,10 +163,8 @@ class WPrimeCalculator(
     @Suppress("SameParameterValue")
     private fun getWPrimeFromTwoParameterAlgorithm(iav_Power: Int, iT_lim: Double, iCP: Int): Int {
         if (iav_Power > iCP) { // Check for valid scope
-            // C++: return (iav_Power-iCP)*((uint16_t)iT_lim);
             return (iav_Power - iCP) * iT_lim.toInt() // Solve 2-parameter algorithm to estimate new W-Prime
         } else {
-            // C++: return w_prime_usr; // If something went wrong, return the global `w_prime_usr`.
             return wPrimeUsr // Return the class's current `w_prime_usr` property.
         }
     }
