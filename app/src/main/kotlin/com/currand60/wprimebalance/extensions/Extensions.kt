@@ -1,6 +1,7 @@
 package com.currand60.wprimebalance.extensions
 
 import io.hammerhead.karooext.KarooSystemService
+import io.hammerhead.karooext.models.KarooEvent
 import io.hammerhead.karooext.models.OnStreamState
 import io.hammerhead.karooext.models.StreamState
 import kotlinx.coroutines.channels.awaitClose

@@ -3,7 +3,7 @@
     displayName="@string/extension_name"
     icon="@drawable/ic_launcher_foreground"
     id="wprimebalance"
-    scansDevices="false">
+    scansDevices="true">
     <DataType
         typeId="wprimebalance"
         description="@string/app_name"

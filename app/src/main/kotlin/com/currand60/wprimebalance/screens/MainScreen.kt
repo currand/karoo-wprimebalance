@@ -36,17 +36,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.managers.ConfigurationManager
-import com.currand60.wprimebalance.theme.AppTheme
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+
     val context = LocalContext.current
     val configManager = remember { ConfigurationManager(context) }
     val coroutineScope = rememberCoroutineScope()
@@ -212,14 +211,23 @@ fun MainScreen() {
 
 
 
-@Preview(
-    widthDp = 256,
-    heightDp = 426,
-)
+//@Preview(
+//    widthDp = 256,
+//    heightDp = 426,
+//)
 
-@Composable
-fun DefaultPreview() {
-    AppTheme {
-        MainScreen()
-    }
-}
+//@Composable
+//fun DefaultPreview() {
+//    val userProfile = UserProfile(
+//        weight = 180.0F,
+//        preferredUnit = UserProfile.PreferredUnit,
+//        maxHr = 180,
+//        restingHr = 40,
+//        heartRateZones = null,
+//        ftp = 320,
+//        powerZones = null
+//    )
+//    AppTheme {
+//        MainScreen(userProfile)
+//    }
+//}

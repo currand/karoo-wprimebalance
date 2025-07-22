@@ -100,7 +100,7 @@ class WPrimeCalculator(
 
         val powerAboveCp = (iPower - iCP)
 
-        Timber.d("Time:${timeSpent.toDouble()} ST: ${sampleTime.toDouble()} tau: $tau")
+//        Timber.d("Time:${timeSpent.toDouble()} ST: ${sampleTime.toDouble()} tau: $tau")
 
         // w_prime is energy and measured in Joules = Watt*second.
         // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
@@ -110,13 +110,14 @@ class WPrimeCalculator(
         val expTerm1 = exp(timeSpent / tau) // Exponential term 1
         val expTerm2 = exp(-timeSpent / tau) // Exponential term 2
 
-        Timber.d("W prime expended: ${wPrimeExpended.toInt()} exp-term1: $expTerm1 exp-term2: $expTerm2 ")
-
         runningSum = runningSum + (wPrimeExpended * expTerm1) // Determine the running sum
 
-        Timber.d("Running Sum: $runningSum")
+//        Timber.d("Running Sum: $runningSum")
 
         wPrimeBalance = (iwPrime.toDouble() - (runningSum * expTerm2)).toLong()
+
+        Timber.d("W\' Balance: $wPrimeBalance J W\' expended: ${wPrimeExpended.toInt()} CP: $iCP W': $iwPrime")
+
 
         //--------------- extra --------------------------------------------------------------------------------------
         // This section implements logic to dynamically update estimated CP and W' based on depletion levels.
@@ -125,7 +126,7 @@ class WPrimeCalculator(
             iTLim += sampleTime // Time to exhaustion: accurate sum of every second spent above CP
         }
 
-        Timber.d(" [$CountPowerAboveCP]")
+//        Timber.d(" [$CountPowerAboveCP]")
 
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {

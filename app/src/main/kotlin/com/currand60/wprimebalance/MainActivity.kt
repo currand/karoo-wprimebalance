@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import com.currand60.wprimebalance.screens.MainScreen
 import timber.log.Timber
 
-
 @Composable
 fun Main() {
     Surface(
@@ -23,9 +22,10 @@ fun Main() {
 }
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (true) { // Make sure BuildConfig.DEBUG is available (it usually is by default)
+        if (BuildConfig.DEBUG) { // Make sure BuildConfig.DEBUG is available (it usually is by default)
             Timber.plant(Timber.DebugTree())
             Timber.d("Timber initialized in Debug mode.")
         } else {
