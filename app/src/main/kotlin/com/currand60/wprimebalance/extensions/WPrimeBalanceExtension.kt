@@ -2,6 +2,7 @@ package com.currand60.wprimebalance.extensions
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
+import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
 import com.currand60.wprimebalance.data.WPrimeDataSource
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -19,7 +20,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
-class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.1") {
+class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
     @Inject
     lateinit var karooSystem: KarooSystemService
@@ -30,7 +31,8 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.1") {
 
     override val types by lazy {
         listOf(
-            WPrimeBalanceDataType(extension)
+            WPrimeBalanceDataType(extension),
+            WPrimeBalancePercentDataType(karooSystem, extension)
         )
     }
 

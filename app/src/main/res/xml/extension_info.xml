@@ -5,9 +5,15 @@
     id="wprimebalance"
     scansDevices="true">
     <DataType
-        typeId="wprimebalance"
-        description="@string/app_name"
-        displayName="@string/app_name"
+        typeId="wprimebalanceraw"
+        description="@string/raw_datatype"
+        displayName="@string/raw_datatype"
+        graphical="false"
+        icon="@drawable/empty" />
+    <DataType
+        typeId="wprimepercent"
+        description="@string/percent_datatype"
+        displayName="@string/percent_datatype"
         graphical="false"
         icon="@drawable/empty" />
     <DataType... />

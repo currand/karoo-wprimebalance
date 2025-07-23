@@ -12,6 +12,6 @@ class WPrimeBalanceDataType(
         Timber.d("WPrimeBalanceDataType created")
     }
     companion object {
-        const val TYPE_ID = "wprimebalance"
+        const val TYPE_ID = "wprimebalanceraw"
     }
 }

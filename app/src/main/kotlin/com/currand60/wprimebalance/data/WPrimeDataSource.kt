@@ -12,11 +12,11 @@ import io.hammerhead.karooext.models.Device
 import io.hammerhead.karooext.models.DeviceEvent
 import io.hammerhead.karooext.models.OnConnectionStatus
 import io.hammerhead.karooext.models.OnDataPoint
-import io.hammerhead.karooext.models.StreamState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -27,6 +27,8 @@ sealed interface WPrimeDevice {
     val source: Device
     fun connect(emitter: Emitter<DeviceEvent>)
 }
+
+
 
 @ExperimentalAtomicApi
 class WPrimeDataSource(
@@ -78,9 +80,11 @@ class WPrimeDataSource(
             karooSystem.streamDataFlow(DataType.Type.POWER).collect {
                 calculator = getOrCreateCalculator()
                 repeat(Int.MAX_VALUE) {
-                    when (it) {
-                        is StreamState.Streaming -> {
-                            val power = it.dataPoint.singleValue?.toInt() ?: 0
+                    val power = 400
+                    delay(1000)
+//                    when (it) {
+//                        is StreamState.Streaming -> {
+//                            val power = it.dataPoint.singleValue?.toInt() ?: 0
                             val wPrimeBal = calculator.calculateWPrimeBalance(power,
                                 System.currentTimeMillis())
                             Timber.d("Updating W' Prime with wPrimeBal: $wPrimeBal")
@@ -95,8 +99,8 @@ class WPrimeDataSource(
                             )
                         }
                     }
-                }
-            }
+//                }
+//            }
             awaitCancellation()
         }
         emitter.setCancellable {
