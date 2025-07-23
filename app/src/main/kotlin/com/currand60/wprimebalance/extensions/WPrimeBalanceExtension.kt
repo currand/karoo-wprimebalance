@@ -47,7 +47,7 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
                 repeat(Int.MAX_VALUE) {
                     val dataSource = WPrimeDataSource(karooSystem, applicationContext, extension)
                     emit(dataSource)
-                    delay(1000)
+                    delay(500)
                 }
             }
             staticSources.collect { device ->

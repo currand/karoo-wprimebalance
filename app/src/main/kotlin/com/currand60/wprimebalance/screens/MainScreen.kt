@@ -53,6 +53,7 @@ fun MainScreen() {
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var wPrimeInput by remember { mutableStateOf("") }
     var criticalPowerInput by remember { mutableStateOf("") }
+    var calculateCpInput by remember { mutableStateOf(false) }
 
     var wPrimeError by remember { mutableStateOf(false) }
     var criticalPowerError by remember { mutableStateOf(false) }
@@ -71,6 +72,7 @@ fun MainScreen() {
             // Initialize the input string states from the loaded numerical values
             wPrimeInput = loadedConfig.wPrime.toString()
             criticalPowerInput = loadedConfig.criticalPower.toString()
+            calculateCpInput = loadedConfig.calculateCp
             Timber.d("currentConfig and input fields updated from loadedConfig: $currentConfig")
         }
     }
