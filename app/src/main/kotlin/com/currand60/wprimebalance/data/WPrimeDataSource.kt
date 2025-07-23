@@ -17,10 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
@@ -37,12 +35,10 @@ class WPrimeDataSource(
     applicationContext: Context,
     extension: String) : WPrimeDevice {
 
-    @Inject
-    lateinit var calculator: WPrimeCalculator
-
     private val calculatorRef = AtomicReference<WPrimeCalculator?>(null)
     private val configurationManager = ConfigurationManager(applicationContext)
     private val dataTypeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var currentConfig: ConfigData? = null
 
     override val source by lazy {
         Device(
@@ -60,7 +56,10 @@ class WPrimeDataSource(
     private suspend fun getOrCreateCalculator(): WPrimeCalculator {
         val latestConfig = configurationManager.getConfig()
         val currentCalculator = calculatorRef.load()
-        if (currentCalculator == null) {
+        if (currentCalculator == null ||
+            latestConfig != currentConfig
+            ) {
+            currentConfig = latestConfig
             val newCalculator = WPrimeCalculator(
                 initialEstimatedCP = latestConfig.criticalPower,
                 initialEstimatedWPrimeJoules = latestConfig.wPrime,
@@ -75,34 +74,34 @@ class WPrimeDataSource(
 
     override fun connect(emitter: Emitter<DeviceEvent>) {
         val job = dataTypeScope.launch {
+            val calculator = getOrCreateCalculator()
             emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
             // Start streaming random data
             Timber.d("start W' Balance stream")
             karooSystem.streamDataFlow(DataType.Type.POWER).collect {
-                calculator = getOrCreateCalculator()
-                repeat(Int.MAX_VALUE) {
 //                    val power = 400
 //                    delay(1000)
-                    when (it) {
-                        is StreamState.Streaming -> {
-                            val power = it.dataPoint.singleValue?.toInt() ?: 0
-                            val wPrimeBal = calculator.calculateWPrimeBalance(power,
-                                System.currentTimeMillis())
-                            Timber.d("Updating W' Prime with wPrimeBal: $wPrimeBal")
-                            emitter.onNext(
-                                OnDataPoint(
-                                    DataPoint(
-                                        dataTypeId = source.dataTypes.first(),
-                                        values = mapOf(DataType.Field.SINGLE to wPrimeBal.toDouble()),
-                                        sourceId = source.uid
-                                    )
+                when (it) {
+                    is StreamState.Streaming -> {
+                        val power = it.dataPoint.singleValue?.toInt() ?: 0
+                        val wPrimeBal = calculator.calculateWPrimeBalance(power,
+                            System.currentTimeMillis())
+                        Timber.d("Updating W' Prime with wPrimeBal: $wPrimeBal")
+                        emitter.onNext(
+                            OnDataPoint(
+                                DataPoint(
+                                    dataTypeId = source.dataTypes.first(),
+                                    values = mapOf(DataType.Field.SINGLE to wPrimeBal.toDouble()),
+                                    sourceId = source.uid
                                 )
                             )
-                        }
-                    }
+                        )
+                    } else -> {
+                    StreamState.NotAvailable
                 }
             }
-            awaitCancellation()
+        }
+        awaitCancellation()
         }
         emitter.setCancellable {
             job.cancel()
