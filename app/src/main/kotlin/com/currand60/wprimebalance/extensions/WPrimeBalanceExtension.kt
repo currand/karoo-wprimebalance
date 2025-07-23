@@ -11,18 +11,15 @@ import io.hammerhead.karooext.models.Device
 import io.hammerhead.karooext.models.DeviceEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
-    @Inject
     lateinit var karooSystem: KarooSystemService
 
     init {
@@ -44,11 +41,8 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
         Timber.d("WPrimeBalance Scan Started")
         val job = CoroutineScope(Dispatchers.IO).launch {
             val staticSources = flow {
-                repeat(Int.MAX_VALUE) {
                     val dataSource = WPrimeDataSource(karooSystem, applicationContext, extension)
                     emit(dataSource)
-                    delay(500)
-                }
             }
             staticSources.collect { device ->
                 emitter.onNext(device.source)
