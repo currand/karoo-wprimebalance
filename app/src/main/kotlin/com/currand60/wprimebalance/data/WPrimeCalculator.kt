@@ -10,18 +10,20 @@ import kotlin.math.max
  Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
  */
 
-class WPrimeCalculator(
-    initialEstimatedCP: Int,
-    initialEstimatedWPrimeJoules: Int,
-    currentTimeMillis: Long,
-    private var useEstimatedCp: Boolean = false
-) {
-    var CP60: Int = initialEstimatedCP // Your (estimate of) Critical Power, more or less the same as FTP
-    var eCP: Int // Algorithmic estimate of Critical Power during intense workout
-    var wPrimeUsr: Int = initialEstimatedWPrimeJoules // Your (estimate of) W-prime or a base value
-    var ewPrimeMod: Int // First order estimate of W-prime modified during intense workout
-    var ewPrimeTest: Int // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
+class WPrimeCalculator() {
+    // Note: These class properties are no longer `val` as they need to be re-initialized during configuration.
+    // They represent the 'user' or 'initial' values for the session.
+    var CP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
+    var wPrimeUsr: Int = 0 // Your (estimate of) W-prime or a base value
+
+    // These represent the 'algorithmic' or 'modified' values that change mid-ride
+    var eCP: Int = 0 // Algorithmic estimate of Critical Power during intense workout
+    var ewPrimeMod: Int = 0 // First order estimate of W-prime modified during intense workout
+    var ewPrimeTest: Int = 0 // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
     var wPrimeBalance: Long = 0L // Can be negative !!! (initialized to 0 as in C++ global scope)
+
+    // This property controls if the algorithm can update CP and W' mid-ride
+    private var useEstimatedCp: Boolean = false
 
     // --- Static variables from C++ functions, translated as private class properties to preserve state ---
     // From `CalculateAveragePowerBelowCP` function
@@ -29,27 +31,47 @@ class WPrimeCalculator(
     private var SumPowerBelowCP: Long = 0L
 
     // From `CalculateAveragePowerAboveCP` function (and implicitly used in `w_prime_balance_waterworth`)
-    private var SumPowerAboveCP: Long = 0L // Sum for calculating average power above CP
-    private var CountPowerAboveCP: Long = 0L // Counter for calculating average power above CP (corresponds to `iCpACp` reference)
-    private var avPower: Int = 0 // Average power above CP (corresponds to `iavPwr` reference)
+    private var SumPowerAboveCP: Long = 0L
+    private var CountPowerAboveCP: Long = 0L
+    private var avPower: Int = 0
 
     // From `w_prime_balance_waterworth` function
-    private var iTLim: Double = 0.0 // Time (duration) while Power is above CP
-    private var timeSpent: Long = 0L // Total Time spent in the workout
+    private var iTLim: Double = 0.0
+    private var timeSpent: Long = 0L // Changed to Long for consistency with SampleTime, as was done in C++ with unsigned long
     private var runningSum: Double = 0.0
-    private val nextLevelStep: Long = 1000L // Stepsize of the next level of w-prime modification --> 1000 Joules step
-    private var nextUpdateLevel: Long = 0L // The next level at which to update eCP, e_w_prime_mod and ew_prime_test
-    private var prevReadingTime: Long = currentTimeMillis // Previous reading timestamp in milliseconds
+    private val nextLevelStep: Long = 1000L
+    private var nextUpdateLevel: Long = 0L
+    private var prevReadingTime: Long = 0L // Initialized to 0L, will be set on first calculate call
 
-    // Constructor `init` block to perform initial setup equivalent to C++ global initialization sequence.
-    init {
-          constrainWPrimeValue() // Ensure we have a realistic value for `w_prime_usr`.
+    fun configure(config: ConfigData, initialTimestampMillis: Long) {
+        // Apply initial configuration
+        CP60 = config.criticalPower
+        wPrimeUsr = config.wPrime
 
-        // After `ConstrainW_PrimeValue` might have modified `CP60` or `w_prime_usr`,
+        // Reset internal state variables
+        wPrimeBalance = wPrimeUsr.toLong() // W' balance starts at full capacity
+        useEstimatedCp = config.calculateCp
+        CountPowerBelowCP = 0L
+        SumPowerBelowCP = 0L
+        SumPowerAboveCP = 0L
+        CountPowerAboveCP = 0L
+        avPower = 0
+        iTLim = 0.0
+        timeSpent = 0L
+        runningSum = 0.0
+        nextUpdateLevel = 0L // Reset next update level
+        prevReadingTime = initialTimestampMillis // Set initial timestamp
+
+        // Apply constraints and initialize dependent algorithmic estimates
+        constrainWPrimeValue() // Ensure we have a realistic value for `wPrimeUsr` and `CP60`
+
+        // After `constrainWPrimeValue` might have modified `CP60` or `wPrimeUsr`,
         // re-initialize other dependent class properties to reflect any changes.
         eCP = CP60
         ewPrimeMod = wPrimeUsr
         ewPrimeTest = wPrimeUsr
+
+        Timber.d("WPrimeCalculator configured: CP60=$CP60, wPrimeUsr=$wPrimeUsr, useEstimatedCp=$useEstimatedCp, initialTimestamp=$initialTimestampMillis")
     }
 
     // ------------------------ W'Balance Functions -----------------------------------
@@ -60,7 +82,6 @@ class WPrimeCalculator(
             SumPowerBelowCP += iPower.toLong()
             CountPowerBelowCP++
         }
-
 
         return if (CountPowerBelowCP > 0) {
             (SumPowerBelowCP / CountPowerBelowCP).toInt() // Calculate and return average power below CP
@@ -199,7 +220,19 @@ class WPrimeCalculator(
         return prevReadingTime
     }
 
-    fun getCurrentEstimatedCP(): Int {
-        return eCP
+    fun getCurrentCP(): Int {
+        return if (useEstimatedCp) {
+            eCP
+        } else {
+            CP60
+        }
+    }
+
+    fun getCurrentWPrimeJoules(): Int { // Added to expose the 'initial' W' for percentage calculation
+        return if (useEstimatedCp) {
+            wPrimeUsr
+        } else {
+            ewPrimeMod
+        }
     }
 }

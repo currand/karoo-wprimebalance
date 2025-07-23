@@ -1,16 +1,12 @@
 package com.currand60.wprimebalance.data
 
-import android.content.Context
 import com.currand60.wprimebalance.extensions.streamDataFlow
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
-import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.StreamState
-import io.hammerhead.karooext.models.UpdateNumericConfig
-import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +20,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 class WPrimeBalancePercentDataType(
     private val karooSystem: KarooSystemService,
     extension: String,
+    private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
 
     init {
@@ -43,7 +40,7 @@ class WPrimeBalancePercentDataType(
                 .map { streamState ->
                 when (streamState) {
                     is StreamState.Streaming -> {
-                        val wPrimeBal = streamState.dataPoint.singleValue!! / 16800.0 * 100.0
+                        val wPrimeBal = (streamState.dataPoint.singleValue ?: 0.0) / calculator.getCurrentWPrimeJoules() * 100.0
                         StreamState.Streaming(
                             DataPoint(
                                 dataTypeId,

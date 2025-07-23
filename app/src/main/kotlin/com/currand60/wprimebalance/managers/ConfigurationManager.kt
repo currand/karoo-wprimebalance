@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.currand60.wprimebalance.data.ConfigData
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -43,5 +45,15 @@ class ConfigurationManager(private val context: Context){
             Timber.d("Retrieved configuration: W'=${config.wPrime}, CP=${config.criticalPower}, calculateCP=${config.calculateCp}")
             config
         }.first()
+    }
+
+    fun getConfigFlow(): Flow<ConfigData> {
+        return context.dataStore.data.map { preferences ->
+            ConfigData(
+                wPrime = preferences[W_PRIME_KEY] ?: ConfigData.DEFAULT.wPrime, // Use default if null
+                criticalPower = preferences[CRITICAL_POWER_KEY] ?: ConfigData.DEFAULT.criticalPower,
+                calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp
+            )
+        }.distinctUntilChanged() // Add distinctUntilChanged here to avoid unnecessary emissions
     }
 }

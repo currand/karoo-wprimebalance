@@ -2,7 +2,6 @@ package com.currand60.wprimebalance.data
 
 import android.content.Context
 import com.currand60.wprimebalance.extensions.streamDataFlow
-import com.currand60.wprimebalance.managers.ConfigurationManager
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.ConnectionStatus
@@ -19,7 +18,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 sealed interface WPrimeDevice {
@@ -33,12 +31,10 @@ sealed interface WPrimeDevice {
 class WPrimeDataSource(
     private val karooSystem: KarooSystemService,
     applicationContext: Context,
-    extension: String) : WPrimeDevice {
+    extension: String,
+    private val calculatorProvider: WPrimeCalculatorProvider) : WPrimeDevice {
 
-    private val calculatorRef = AtomicReference<WPrimeCalculator?>(null)
-    private val configurationManager = ConfigurationManager(applicationContext)
     private val dataTypeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var currentConfig: ConfigData? = null
 
     override val source by lazy {
         Device(
@@ -53,31 +49,14 @@ class WPrimeDataSource(
         Timber.d("WPrimeDataSource Created")
     }
 
-    private suspend fun getOrCreateCalculator(): WPrimeCalculator {
-        val latestConfig = configurationManager.getConfig()
-        val currentCalculator = calculatorRef.load()
-        if (currentCalculator == null ||
-            latestConfig != currentConfig
-            ) {
-            currentConfig = latestConfig
-            val newCalculator = WPrimeCalculator(
-                initialEstimatedCP = latestConfig.criticalPower,
-                initialEstimatedWPrimeJoules = latestConfig.wPrime,
-                currentTimeMillis = System.currentTimeMillis(),
-                useEstimatedCp = latestConfig.calculateCp
-            )
-            calculatorRef.store(newCalculator)
-            return newCalculator
-        }
-        return currentCalculator
-    }
-
     override fun connect(emitter: Emitter<DeviceEvent>) {
         val job = dataTypeScope.launch {
-            val calculator = getOrCreateCalculator()
             emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
-            // Start streaming random data
             Timber.d("start W' Balance stream")
+
+            val calculator = calculatorProvider.calculator
+            calculatorProvider.resetCalculator()
+
             karooSystem.streamDataFlow(DataType.Type.POWER).collect {
 //                    val power = 400
 //                    delay(1000)
