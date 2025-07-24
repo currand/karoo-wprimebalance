@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ExtensionInfo
     displayName="@string/extension_name"
-    icon="@drawable/ic_launcher_foreground"
-    id="template-id"
-    scansDevices="false">
-    <!-- DataType ... -->
+    icon="@drawable/icon_gauge"
+    id="wprimebalance"
+    scansDevices="true">
+    <DataType
+        typeId="wprimebalanceraw"
+        description="@string/raw_datatype"
+        displayName="@string/raw_datatype"
+        graphical="false"
+        icon="@drawable/icon_gauge" />
+    <DataType
+        typeId="wprimepercent"
+        description="@string/percent_datatype"
+        displayName="@string/percent_datatype"
+        graphical="false"
+        icon="@drawable/icon_gauge" />
+    <DataType... />
 </ExtensionInfo>

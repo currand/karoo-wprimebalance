@@ -1,4 +1,4 @@
-package io.hammerhead.karooexttemplate.theme
+package com.currand60.wprimebalance.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
