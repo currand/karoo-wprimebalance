@@ -1,24 +1,17 @@
 package com.currand60.wprimebalance.data
 
-import android.content.Context
-import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
-import com.currand60.wprimebalance.BuildConfig
 import com.currand60.wprimebalance.extensions.streamDataFlow
-import com.currand60.wprimebalance.views.WPrimeBalanceGauge
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
-import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.StreamState
-import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -69,43 +62,4 @@ class WPrimeBalancePercentDataType(
             job.cancel()
         }
     }
-
-    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter): Unit {
-        if (BuildConfig.DEBUG) {
-            Timber.d("Starting W' Balance Percentage view with $emitter and config $config")
-        }
-
-        val viewJob = viewScope.launch {
-            val wPrimeRawFlow = karooSystem.streamDataFlow(DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID))
-
-            wPrimeRawFlow.collect { streamState ->
-                val currentWPrimeBalance = (streamState as? StreamState.Streaming)?.dataPoint?.singleValue ?: 0.0
-                val totalWPrimeCapacity = calculator.getCurrentWPrimeJoules().toDouble()
-
-                val wPrimePercentage: Double = if (totalWPrimeCapacity > 0) {
-                    (currentWPrimeBalance / totalWPrimeCapacity) * 100.0
-                } else {
-                    0.0
-                }
-
-                if (BuildConfig.DEBUG) {
-                    Timber.d("Updating W' Balance Percentage view with $wPrimePercentage %")
-                }
-
-                val result = glanceRemoteViews.compose(context, DpSize.Unspecified) {
-                    WPrimeBalanceGauge(wPrimePercentage, config.alignment)
-                }
-                emitter.updateView(result.remoteViews)
-            }
-            awaitCancellation()
-        }
-
-        emitter.setCancellable {
-            if (BuildConfig.DEBUG) {
-                Timber.d("Stopping W' Balance Percentage view with $emitter")
-            }
-            viewJob.cancel()
-        }
-    }
-
 }

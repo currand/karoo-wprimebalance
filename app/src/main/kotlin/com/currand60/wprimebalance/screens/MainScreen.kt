@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,13 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, widthDp = 240, heightDp = 400)
 @Composable
 fun MainScreen() {
 
@@ -210,26 +210,3 @@ fun MainScreen() {
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
-
-
-
-//@Preview(
-//    widthDp = 256,
-//    heightDp = 426,
-//)
-
-//@Composable
-//fun DefaultPreview() {
-//    val userProfile = UserProfile(
-//        weight = 180.0F,
-//        preferredUnit = UserProfile.PreferredUnit,
-//        maxHr = 180,
-//        restingHr = 40,
-//        heartRateZones = null,
-//        ftp = 320,
-//        powerZones = null
-//    )
-//    AppTheme {
-//        MainScreen(userProfile)
-//    }
-//}
