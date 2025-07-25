@@ -45,7 +45,13 @@ class WPrimeBalancePercentDataType(
                 .map { streamState ->
                 when (streamState) {
                     is StreamState.Streaming -> {
-                        val wPrimeBal = (streamState.dataPoint.singleValue ?: 0.0) / calculator.getCurrentWPrimeJoules() * 100.0
+                        val currentWPrimeJoules = calculator.getCurrentWPrimeJoules()
+                        val wPrimeBal = if (currentWPrimeJoules > 0) {
+                            (streamState.dataPoint.singleValue ?: 0.0) / currentWPrimeJoules * 100.0
+                        } else {
+                            Timber.w("WPrimeCalculator's current W' Joules is 0, cannot calculate percentage.")
+                            0.0 // Default to 0% or some other sensible value
+                        }
                         StreamState.Streaming(
                             DataPoint(
                                 dataTypeId,
