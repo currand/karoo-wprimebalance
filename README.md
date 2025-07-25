@@ -25,9 +25,8 @@ You can sideload the app using the following steps for Karoo 2
 
 If you've Karoo 3 and v > 1.527 you can sideload the app using the following steps:
 
-1. Link with apk (releases link) from your mobile ( _TODO_ )
-2. Share with Hammerhead companion app
-3. Install the app using the Hammerhead companion app.
+1. Share [apk link](https://github.com/currand/karoo-wprimebalance/releases/download/0.1-alpha/app-release.apk) with Hammerhead companion app
+2. Install the app using the Hammerhead companion app.
 
 **It's mandatory to reset the Karoo after the installation (shutdown and start again).**
 

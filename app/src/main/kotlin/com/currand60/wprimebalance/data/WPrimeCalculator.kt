@@ -62,8 +62,10 @@ class WPrimeCalculator() {
         nextUpdateLevel = 0L // Reset next update level
         prevReadingTime = initialTimestampMillis // Set initial timestamp
 
-        // Apply constraints and initialize dependent algorithmic estimates
-        constrainWPrimeValue() // Ensure we have a realistic value for `wPrimeUsr` and `CP60`
+        // Apply constraints and initialize dependent algorithmic estimates if useEstimatedCp = true
+        if (useEstimatedCp) {
+            constrainWPrimeValue() // Ensure we have a realistic value for `wPrimeUsr` and `CP60`
+        }
 
         // After `constrainWPrimeValue` might have modified `CP60` or `wPrimeUsr`,
         // re-initialize other dependent class properties to reflect any changes.
@@ -149,13 +151,23 @@ class WPrimeCalculator() {
 
 //        Timber.d(" [$CountPowerAboveCP]")
 
+        if (useEstimatedCp) {
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
             nextUpdateLevel -= nextLevelStep // Move to the next lower depletion level
-            eCP = getCpFromTwoParameterAlgorithm(avPower, iTLim.toLong(), iwPrime) // Estimate a new `eCP` value
-            ewPrimeMod = wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
-            ewPrimeTest = getWPrimeFromTwoParameterAlgorithm((eCP * 1.045).toInt(), 1200.0, eCP) // 20-Min-test estimate for W-Prime
-
+            eCP = getCpFromTwoParameterAlgorithm(
+                avPower,
+                iTLim.toLong(),
+                iwPrime
+            ) // Estimate a new `eCP` value
+            ewPrimeMod =
+                wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
+            ewPrimeTest = getWPrimeFromTwoParameterAlgorithm(
+                (eCP * 1.045).toInt(),
+                1200.0,
+                eCP
+            ) // 20-Min-test estimate for W-Prime
+        }
             Timber.d("Update of eCP - ew_prime $ewPrimeMod - avPower: $avPower - T-lim:$iTLim --> eCP: $eCP --> Test estimate of W-Prime: $ewPrimeTest")
         }
     }
@@ -221,18 +233,10 @@ class WPrimeCalculator() {
     }
 
     fun getCurrentCP(): Int {
-        return if (useEstimatedCp) {
-            eCP
-        } else {
-            CP60
-        }
+        return CP60
     }
 
     fun getCurrentWPrimeJoules(): Int { // Added to expose the 'initial' W' for percentage calculation
-        return if (useEstimatedCp) {
-            wPrimeUsr
-        } else {
-            ewPrimeMod
-        }
+        return wPrimeUsr
     }
 }
