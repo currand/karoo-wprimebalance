@@ -13,6 +13,7 @@ import io.hammerhead.karooext.models.DeviceEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 import timber.log.Timber
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
@@ -20,7 +21,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
-    lateinit var karooSystem: KarooSystemService
+    private val karooSystem: KarooSystemService by inject() // Or use get() directly in onCreate
 
     init {
         Timber.d("WPrimeBalanceExtension created")
@@ -58,7 +59,6 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
     override fun onCreate() {
         super.onCreate()
-        karooSystem = KarooSystemService(applicationContext)
         instance = this
         WPrimeCalculatorProvider.initialize(applicationContext)
 

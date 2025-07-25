@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.currand60.wprimebalance"
-    compileSdk = 34
+    compileSdk = 36
     testOptions { unitTests.all { it.useJUnitPlatform() } }
 
     defaultConfig {
@@ -71,4 +71,6 @@ dependencies {
     implementation(libs.androidx.glance.appwidget.preview)
     implementation(libs.mockk)
     testImplementation(libs.junit.jupiter)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
 }

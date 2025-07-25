@@ -1,5 +1,13 @@
 package com.currand60.wprimebalance.data
 
+import com.currand60.wprimebalance.managers.ConfigurationManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.exp
 import kotlin.math.max
@@ -10,17 +18,24 @@ import kotlin.math.max
  Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
  */
 
-class WPrimeCalculator() {
-    // Note: These class properties are no longer `val` as they need to be re-initialized during configuration.
-    // They represent the 'user' or 'initial' values for the session.
-    var CP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
-    var wPrimeUsr: Int = 0 // Your (estimate of) W-prime or a base value
+class WPrimeCalculator(
+    private val configurationManager: ConfigurationManager
+) {
+    private val calculatorScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    var CP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
+        private set
+    var wPrimeUsr: Int = 0 // Your (estimate of) W-prime or a base value
+        private set
     // These represent the 'algorithmic' or 'modified' values that change mid-ride
     var eCP: Int = 0 // Algorithmic estimate of Critical Power during intense workout
+        private set
     var ewPrimeMod: Int = 0 // First order estimate of W-prime modified during intense workout
+        private set
     var ewPrimeTest: Int = 0 // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
+        private set
     var wPrimeBalance: Long = 0L // Can be negative !!! (initialized to 0 as in C++ global scope)
+        private set
 
     // This property controls if the algorithm can update CP and W' mid-ride
     private var useEstimatedCp: Boolean = false
@@ -43,14 +58,45 @@ class WPrimeCalculator() {
     private var nextUpdateLevel: Long = 0L
     private var prevReadingTime: Long = 0L // Initialized to 0L, will be set on first calculate call
 
-    fun configure(config: ConfigData, initialTimestampMillis: Long) {
-        // Apply initial configuration
+    init {
+        Timber.d("WPrimeCalculator created. Starting config observer.")
+        calculatorScope.launch {
+            configurationManager.getConfigFlow()
+                .distinctUntilChanged() // Only react when the config truly changes
+                .onEach { config ->
+                    Timber.d("Configuration change detected: $config. Applying to WPrimeCalculator.")
+                    // When config changes, apply the new settings.
+                    // This does NOT reset the ride-specific state (e.g., wPrimeBalance).
+                    _applyConfig(config)
+                }
+                .collect {  }
+        }
+    }
+
+    private fun _applyConfig(config: ConfigData) {
         CP60 = config.criticalPower
         wPrimeUsr = config.wPrime
-
-        // Reset internal state variables
-        wPrimeBalance = wPrimeUsr.toLong() // W' balance starts at full capacity
         useEstimatedCp = config.calculateCp
+
+        // Apply constraints immediately after setting user values
+        constrainWPrimeValue()
+
+        // Initialize/re-initialize algorithmic estimates based on (potentially constrained) user values
+        eCP = CP60
+        ewPrimeMod = wPrimeUsr
+        ewPrimeTest = wPrimeUsr
+        nextUpdateLevel = wPrimeUsr.toLong() // Reset update level based on new W'
+
+        Timber.d("WPrimeCalculator _applyConfig completed: CP60=$CP60, wPrimeUsr=$wPrimeUsr, useEstimatedCp=$useEstimatedCp")
+    }
+
+    suspend fun resetRideState(initialTimestampMillis: Long) {
+        Timber.d("Resetting WPrimeCalculator ride state.")
+
+        val latestConfig = configurationManager.getConfigFlow().first() // Get current value
+        _applyConfig(latestConfig) // Apply it to update CP60, wPrimeUsr etc.
+
+        wPrimeBalance = wPrimeUsr.toLong() // W' balance starts at full capacity with the current W'
         CountPowerBelowCP = 0L
         SumPowerBelowCP = 0L
         SumPowerAboveCP = 0L
@@ -58,23 +104,12 @@ class WPrimeCalculator() {
         avPower = 0
         iTLim = 0.0
         timeSpent = 0L
-        runningSum = 0.0
-        nextUpdateLevel = 0L // Reset next update level
-        prevReadingTime = initialTimestampMillis // Set initial timestamp
+        // nextUpdateLevel is already set by _applyConfig
+        prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
 
-        // Apply constraints and initialize dependent algorithmic estimates if useEstimatedCp = true
-        if (useEstimatedCp) {
-            constrainWPrimeValue() // Ensure we have a realistic value for `wPrimeUsr` and `CP60`
-        }
-
-        // After `constrainWPrimeValue` might have modified `CP60` or `wPrimeUsr`,
-        // re-initialize other dependent class properties to reflect any changes.
-        eCP = CP60
-        ewPrimeMod = wPrimeUsr
-        ewPrimeTest = wPrimeUsr
-
-        Timber.d("WPrimeCalculator configured: CP60=$CP60, wPrimeUsr=$wPrimeUsr, useEstimatedCp=$useEstimatedCp, initialTimestamp=$initialTimestampMillis")
+        Timber.d("WPrimeCalculator ride state reset. W' Balance set to $wPrimeBalance J, initial timestamp: $initialTimestampMillis")
     }
+
 
     // ------------------------ W'Balance Functions -----------------------------------
 

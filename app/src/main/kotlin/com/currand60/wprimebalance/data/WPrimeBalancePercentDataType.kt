@@ -1,7 +1,6 @@
 package com.currand60.wprimebalance.data
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
-import androidx.glance.appwidget.GlanceRemoteViews
 import com.currand60.wprimebalance.extensions.streamDataFlow
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.DataTypeImpl
@@ -33,8 +32,6 @@ class WPrimeBalancePercentDataType(
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val viewScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val glanceRemoteViews = GlanceRemoteViews()
 
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {
@@ -45,7 +42,13 @@ class WPrimeBalancePercentDataType(
                 .map { streamState ->
                 when (streamState) {
                     is StreamState.Streaming -> {
-                        val wPrimeBal = (streamState.dataPoint.singleValue ?: 0.0) / calculator.getCurrentWPrimeJoules() * 100.0
+                        val currentWPrimeJoules = calculator.getCurrentWPrimeJoules()
+                        val wPrimeBal = if (currentWPrimeJoules > 0) {
+                            (streamState.dataPoint.singleValue ?: 0.0) / currentWPrimeJoules * 100.0
+                        } else {
+                            Timber.w("WPrimeCalculator's current W' Joules is 0, cannot calculate percentage.")
+                            0.0 // Default to 0% or some other sensible value
+                        }
                         StreamState.Streaming(
                             DataPoint(
                                 dataTypeId,

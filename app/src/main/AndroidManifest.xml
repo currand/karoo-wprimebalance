@@ -4,10 +4,11 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/icon_gauge"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/icon_gauge"
         android:supportsRtl="true"
+        android:name=".WPrimeApplication"
         android:theme="@style/Theme.AppCompat">
         <activity
             android:name=".MainActivity"
