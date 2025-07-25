@@ -1,6 +1,5 @@
 package com.currand60.wprimebalance.data
 
-import android.content.Context
 import com.currand60.wprimebalance.extensions.streamDataFlow
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.internal.Emitter
@@ -30,9 +29,9 @@ sealed interface WPrimeDevice {
 @ExperimentalAtomicApi
 class WPrimeDataSource(
     private val karooSystem: KarooSystemService,
-    applicationContext: Context,
     extension: String,
-    private val calculatorProvider: WPrimeCalculatorProvider) : WPrimeDevice {
+    private val calculator: WPrimeCalculator
+) : WPrimeDevice {
 
     private val dataTypeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -54,8 +53,7 @@ class WPrimeDataSource(
             emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
             Timber.d("start W' Balance stream")
 
-            val calculator = calculatorProvider.calculator
-            calculatorProvider.resetCalculator()
+            calculator.resetRideState(System.currentTimeMillis())
 
             karooSystem.streamDataFlow(DataType.Type.POWER).collect {
 //                    val power = 400

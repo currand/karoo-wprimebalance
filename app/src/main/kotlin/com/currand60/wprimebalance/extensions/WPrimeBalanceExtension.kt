@@ -3,7 +3,7 @@ package com.currand60.wprimebalance.extensions
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
-import com.currand60.wprimebalance.data.WPrimeCalculatorProvider
+import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.data.WPrimeDataSource
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
@@ -21,7 +21,9 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
-    private val karooSystem: KarooSystemService by inject() // Or use get() directly in onCreate
+    private val karooSystem: KarooSystemService by inject()
+    private val wPrimeCalculator: WPrimeCalculator by inject()
+    private val wPrimeDataSource: WPrimeDataSource by inject()
 
     init {
         Timber.d("WPrimeBalanceExtension created")
@@ -30,20 +32,14 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
     override val types by lazy {
         listOf(
             WPrimeBalanceDataType(extension),
-            WPrimeBalancePercentDataType(karooSystem, extension, WPrimeCalculatorProvider.calculator)
+            WPrimeBalancePercentDataType(karooSystem, extension, wPrimeCalculator)
         )
-    }
-
-    companion object {
-        private var instance: WPrimeBalanceExtension? = null
     }
 
     override fun startScan(emitter: Emitter<Device>) {
         Timber.d("WPrimeBalance Scan Started")
         val job = CoroutineScope(Dispatchers.IO).launch {
-            val dataSource = WPrimeDataSource(karooSystem, applicationContext, extension,
-                        WPrimeCalculatorProvider)
-                    emitter.onNext(dataSource.source)
+            emitter.onNext(wPrimeDataSource.source)
         }
         emitter.setCancellable {
             job.cancel()
@@ -52,15 +48,17 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
     override fun connectDevice(uid: String, emitter: Emitter<DeviceEvent>) {
         Timber.d("Connect to $uid")
-        WPrimeDataSource(karooSystem, applicationContext, extension, WPrimeCalculatorProvider)
-            .connect(emitter)
+        if (uid == wPrimeDataSource.source.uid) {
+            wPrimeDataSource.connect(emitter)
+        } else {
+            Timber.w("Attempted to connect to unknown device UID: $uid")
+        }
+
     }
 
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        WPrimeCalculatorProvider.initialize(applicationContext)
 
         Timber.d("Service WPrimeBalance created")
         karooSystem.connect { connected ->
