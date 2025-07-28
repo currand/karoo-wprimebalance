@@ -1,3 +1,4 @@
+
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.managers.ConfigurationManager
@@ -11,7 +12,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -90,29 +92,42 @@ class WPrimeCalculatorTest {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 200, wPrime = 14000, calculateCp = false)
+            val initialConfig = ConfigData(criticalPower = 300, wPrime = 20000, calculateCp = false)
             configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
 
             // When
             wPrimeCalculator.resetRideState(initialTimestamp)
 
             val testSteps = listOf(
-                Pair(100, 10000),
-                Pair(300, 170000),
+                Pair(100, 600000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 240000),
             )
 
             for (step in testSteps) {
                 val power = step.first
                 val durationMs = step.second
 
+
                 for (elapsedTime in stepLength until durationMs step stepLength) {
-                    val currentTime = initialTimestamp + elapsedTime
+                    currentTime += stepLength
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
+                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-
             assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
         }
 

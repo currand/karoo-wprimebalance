@@ -52,7 +52,7 @@ class WPrimeCalculator(
 
     // From `w_prime_balance_waterworth` function
     private var iTLim: Double = 0.0
-    private var timeSpent: Long = 0L // Changed to Long for consistency with SampleTime, as was done in C++ with unsigned long
+    private var timeSpent: Double = 0.0 // Changed to Long for consistency with SampleTime, as was done in C++ with unsigned long
     private var runningSum: Double = 0.0
     private val nextLevelStep: Long = 1000L
     private var nextUpdateLevel: Long = 0L
@@ -85,7 +85,6 @@ class WPrimeCalculator(
         eCP = cP60
         ewPrimeMod = wPrimeUsr
         ewPrimeTest = wPrimeUsr
-//        nextUpdateLevel = wPrimeUsr.toLong() // Reset update level based on new W'
 
         Timber.d("WPrimeCalculator _applyConfig completed: CP60=$cP60, wPrimeUsr=$wPrimeUsr, useEstimatedCp=$useEstimatedCp")
     }
@@ -103,9 +102,11 @@ class WPrimeCalculator(
         countPowerAboveCP = 0L
         avPower = 0
         iTLim = 0.0
-        timeSpent = 0L
+        timeSpent = 0.0
         // nextUpdateLevel is already set by _applyConfig
         prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
+        nextUpdateLevel = 0L
+
 
         Timber.d("WPrimeCalculator ride state reset. W' Balance set to $wPrimeBalance J, initial timestamp: $initialTimestampMillis")
     }
@@ -142,7 +143,6 @@ class WPrimeCalculator(
     private fun tauWPrimeBalance(iPower: Int, iCP: Int): Double {
         val avgPowerBelowCp = calculateAveragePowerBelowCP(iPower, iCP)
         val deltaCp = (iCP - avgPowerBelowCp).toDouble()
-
         return (546.00 * exp(-0.01 * deltaCp) + 316.00)
     }
 
@@ -150,7 +150,7 @@ class WPrimeCalculator(
     private fun wPrimeBalanceWaterworth(iPower: Int, iCP: Int, iwPrime: Int, currentTimestampMillis: Long) {
         // Determine the individual sample time in seconds, it may/will vary during the workout.
         // Using the provided `currentTimestampMillis` for calculation.
-        val sampleTime: Long = (currentTimestampMillis - prevReadingTime) / 1000
+        val sampleTime: Double = (currentTimestampMillis - prevReadingTime) / 1000.0
         prevReadingTime = currentTimestampMillis
 
         val tau = tauWPrimeBalance(iPower, iCP)
@@ -191,7 +191,7 @@ class WPrimeCalculator(
             nextUpdateLevel -= nextLevelStep // Move to the next lower depletion level
             eCP = getCpFromTwoParameterAlgorithm(
                 avPower,
-                iTLim.toLong(),
+                iTLim,
                 iwPrime
             ) // Estimate a new `eCP` value
             ewPrimeMod =
@@ -217,8 +217,8 @@ class WPrimeCalculator(
         }
     }
 
-    private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Long, iwPrime: Int): Int {
-        val wPrimeDivTLim = (iwPrime.toDouble() / iTLim.toDouble()).toInt() // Type cast for correct calculations
+    private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Double, iwPrime: Int): Int {
+        val wPrimeDivTLim = (iwPrime.toDouble() / iTLim).toInt() // Type cast for correct calculations
 
         return if (iavPower > wPrimeDivTLim) { // Check for valid scope
             (iavPower - wPrimeDivTLim) // Solve 2-parameter algorithm to estimate CP
