@@ -11,6 +11,8 @@ glance = "1.1.1"
 javaxInject = "1"
 datastorePreferences = "1.1.7"
 junitJupiter = "5.8.1"
+kotlinxCoroutinesTest = "1.10.2"
+kotlinxSerializationJson = "1.9.0"
 mockk = "1.14.3"
 koin-bom = "4.1.0"
 
@@ -40,6 +42,8 @@ androidx-compose-material = { module = "androidx.compose.material3:material3", v
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 androidx-glance-preview = { group = "androidx.glance", name = "glance-preview", version.ref = "glance" }
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-glance-appwidget-preview = { group = "androidx.glance", name = "glance-appwidget-preview", version = "1.1.1" }
