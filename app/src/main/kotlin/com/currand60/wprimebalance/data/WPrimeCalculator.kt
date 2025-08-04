@@ -39,7 +39,6 @@ class WPrimeCalculator(
 
     // This property controls if the algorithm can update CP and W' mid-ride
     private var useEstimatedCp: Boolean = false
-    private var useKarooFtp: Boolean = false
 
     // --- Static variables from C++ functions, translated as private class properties to preserve state ---
     // From `CalculateAveragePowerBelowCP` function
@@ -79,9 +78,10 @@ class WPrimeCalculator(
         wPrimeUsr = config.wPrime
         useEstimatedCp = config.calculateCp
 
-        // Apply constraints immediately after setting user values
-        constrainWPrimeValue()
-
+        // Ensure values are rational if we are calculating them
+        if (useEstimatedCp) {
+            constrainWPrimeValue()
+        }
         // Initialize/re-initialize algorithmic estimates based on (potentially constrained) user values
         eCP = cP60
         ewPrimeMod = wPrimeUsr

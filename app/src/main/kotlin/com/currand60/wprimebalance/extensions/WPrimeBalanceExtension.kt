@@ -23,7 +23,7 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
     private val karooSystem: KarooSystemServiceProvider by inject()
     private val wPrimeCalculator: WPrimeCalculator by inject()
-    private val wPrimeDataSource: WPrimeDataSource by inject()
+    private val wPrimeDataSource: WPrimeDataSource by lazy { WPrimeDataSource(karooSystem, extension, wPrimeCalculator) }
 
     init {
         Timber.d("WPrimeBalanceExtension created")

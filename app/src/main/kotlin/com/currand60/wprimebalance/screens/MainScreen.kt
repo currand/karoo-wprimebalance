@@ -176,7 +176,8 @@ fun MainScreen() {
                     if (wPrimeError) {
                         Text("Please enter a valid number (e.g., 20.5)")
                     }
-                }
+                },
+                enabled = !currentConfig.calculateCp
             )
             Text("Critical Power", Modifier.padding(start = 5.dp))
             // Critical Power input field
@@ -235,7 +236,7 @@ fun MainScreen() {
                 Text(
                     modifier = Modifier.padding(start = 5.dp)
                         .align(Alignment.CenterVertically),
-                    text = "Estimate CP mid-ride",
+                    text = "Estimate CP and W' mid-ride",
                 )
             }
             Row(
@@ -259,7 +260,9 @@ fun MainScreen() {
                 .padding(5.dp)
             ) {
                 Text("Enter your W' in Joules and CP if you know them. If you are unsure " +
-                        "Enter your best guess and select the option to calculate it mid-ride.")
+                        "select the option to calculate it mid-ride. After a few hard efforts, you " +
+                        "can see your estimate mid-ride and as an end of ride notification."
+                )
             }
             // Save Button
             FilledTonalButton(

@@ -22,6 +22,7 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 class KarooSystemServiceProvider(private val context: Context) {
     val karooSystemService: KarooSystemService = KarooSystemService(context)
@@ -60,6 +61,7 @@ class KarooSystemServiceProvider(private val context: Context) {
     }
 }
 
+@OptIn(ExperimentalAtomicApi::class)
 val appModule = module {
     singleOf(::WPrimeCalculator)
     singleOf(::ConfigurationManager)
