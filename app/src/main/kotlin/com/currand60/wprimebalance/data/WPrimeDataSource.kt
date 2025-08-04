@@ -1,7 +1,6 @@
 package com.currand60.wprimebalance.data
 
-import com.currand60.wprimebalance.extensions.streamDataFlow
-import io.hammerhead.karooext.KarooSystemService
+import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.ConnectionStatus
 import io.hammerhead.karooext.models.DataPoint
@@ -28,7 +27,7 @@ sealed interface WPrimeDevice {
 
 @ExperimentalAtomicApi
 class WPrimeDataSource(
-    private val karooSystem: KarooSystemService,
+    private val karooSystem: KarooSystemServiceProvider,
     extension: String,
     private val calculator: WPrimeCalculator
 ) : WPrimeDevice {

@@ -1,11 +1,11 @@
 package com.currand60.wprimebalance.extensions
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
+import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
 import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.data.WPrimeDataSource
-import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.Device
@@ -21,7 +21,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
 
-    private val karooSystem: KarooSystemService by inject()
+    private val karooSystem: KarooSystemServiceProvider by inject()
     private val wPrimeCalculator: WPrimeCalculator by inject()
     private val wPrimeDataSource: WPrimeDataSource by inject()
 
@@ -54,22 +54,5 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
             Timber.w("Attempted to connect to unknown device UID: $uid")
         }
 
-    }
-
-
-    override fun onCreate() {
-        super.onCreate()
-
-        Timber.d("Service WPrimeBalance created")
-        karooSystem.connect { connected ->
-            if (connected) {
-                Timber.d("Connected to Karoo system")
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        karooSystem.disconnect()
-        super.onDestroy()
     }
 }

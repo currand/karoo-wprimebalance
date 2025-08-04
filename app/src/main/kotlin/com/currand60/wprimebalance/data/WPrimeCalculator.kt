@@ -19,7 +19,7 @@ import kotlin.math.max
  */
 
 class WPrimeCalculator(
-    private val configurationManager: ConfigurationManager
+    private val configurationManager: ConfigurationManager,
 ) {
     private val calculatorScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -39,6 +39,7 @@ class WPrimeCalculator(
 
     // This property controls if the algorithm can update CP and W' mid-ride
     private var useEstimatedCp: Boolean = false
+    private var useKarooFtp: Boolean = false
 
     // --- Static variables from C++ functions, translated as private class properties to preserve state ---
     // From `CalculateAveragePowerBelowCP` function

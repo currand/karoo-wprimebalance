@@ -16,12 +16,17 @@ import timber.log.Timber
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class ConfigurationManager(private val context: Context){
+class ConfigurationManager(
+    private val context: Context,
+){
+
 
     companion object {
         private val W_PRIME_KEY = intPreferencesKey("w_prime")
         private val CRITICAL_POWER_KEY = intPreferencesKey("critical_power")
         private val CALCULATE_CP_KEY = booleanPreferencesKey("calculateCp")
+        private val USE_KAROO_FTP_KEY = booleanPreferencesKey("useKarooFtp")
+
     }
 
     suspend fun saveConfig(config: ConfigData) {
@@ -30,6 +35,8 @@ class ConfigurationManager(private val context: Context){
             preferences[W_PRIME_KEY] = config.wPrime
             preferences[CRITICAL_POWER_KEY] = config.criticalPower
             preferences[CALCULATE_CP_KEY] = config.calculateCp
+            preferences[USE_KAROO_FTP_KEY] = config.useKarooFtp
+
         }
         Timber.i("Configuration successfully saved to DataStore.")
     }
@@ -38,9 +45,10 @@ class ConfigurationManager(private val context: Context){
         Timber.d("Attempting to retrieve configuration from DataStore.")
         return context.dataStore.data.map { preferences ->
             val config = ConfigData(
-                wPrime = preferences[W_PRIME_KEY] ?: 0,
-                criticalPower = preferences[CRITICAL_POWER_KEY] ?: 0,
-                calculateCp = preferences[CALCULATE_CP_KEY] ?: false
+                wPrime = preferences[W_PRIME_KEY] ?: ConfigData.DEFAULT.wPrime,
+                criticalPower = preferences[CRITICAL_POWER_KEY] ?: ConfigData.DEFAULT.criticalPower,
+                calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp,
+                useKarooFtp = preferences[USE_KAROO_FTP_KEY] ?: ConfigData.DEFAULT.useKarooFtp
             )
             Timber.d("Retrieved configuration: W'=${config.wPrime}, CP=${config.criticalPower}, calculateCP=${config.calculateCp}")
             config
@@ -52,7 +60,9 @@ class ConfigurationManager(private val context: Context){
             ConfigData(
                 wPrime = preferences[W_PRIME_KEY] ?: ConfigData.DEFAULT.wPrime, // Use default if null
                 criticalPower = preferences[CRITICAL_POWER_KEY] ?: ConfigData.DEFAULT.criticalPower,
-                calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp
+                calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp,
+                useKarooFtp = preferences[USE_KAROO_FTP_KEY] ?: ConfigData.DEFAULT.useKarooFtp
+
             )
         }.distinctUntilChanged() // Add distinctUntilChanged here to avoid unnecessary emissions
     }
