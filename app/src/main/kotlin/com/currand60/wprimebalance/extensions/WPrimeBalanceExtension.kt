@@ -19,7 +19,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
-class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.2") {
+class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.3") {
 
     private val karooSystem: KarooSystemServiceProvider by inject()
     private val wPrimeCalculator: WPrimeCalculator by inject()
