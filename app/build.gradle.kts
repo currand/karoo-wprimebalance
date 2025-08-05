@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.currand60.wprimebalance"
-    compileSdk = 34
+    compileSdk = 36
     testOptions { unitTests.all { it.useJUnitPlatform() } }
 
     defaultConfig {
@@ -64,11 +64,18 @@ dependencies {
     implementation(libs.bundles.compose.ui)
     implementation(libs.javax.inject)
     implementation(libs.timber)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.preview)
     implementation(libs.androidx.glance.appwidget.preview)
     implementation(libs.mockk)
+    implementation(libs.androidx.navigation.runtime.android)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+    testImplementation(libs.junit.jupiter)
     testImplementation(libs.junit.jupiter)
 }

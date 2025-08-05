@@ -1,9 +1,7 @@
 package com.currand60.wprimebalance.data
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
-import androidx.glance.appwidget.GlanceRemoteViews
-import com.currand60.wprimebalance.extensions.streamDataFlow
-import io.hammerhead.karooext.KarooSystemService
+import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.DataPoint
@@ -19,7 +17,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @OptIn(ExperimentalAtomicApi::class, ExperimentalGlanceRemoteViewsApi::class)
 class WPrimeBalancePercentDataType(
-    private val karooSystem: KarooSystemService,
+    private val karooSystem: KarooSystemServiceProvider,
     extension: String,
     private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
@@ -33,8 +31,6 @@ class WPrimeBalancePercentDataType(
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val viewScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val glanceRemoteViews = GlanceRemoteViews()
 
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {

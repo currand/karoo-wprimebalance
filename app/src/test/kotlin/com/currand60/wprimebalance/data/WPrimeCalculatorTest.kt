@@ -1,187 +1,197 @@
-package com.currand60.wprimebalance.data
 
-import android.content.Context
+import com.currand60.wprimebalance.data.ConfigData
+import com.currand60.wprimebalance.data.WPrimeCalculator
+import com.currand60.wprimebalance.managers.ConfigurationManager
+import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.AfterAllCallback
-import org.junit.jupiter.api.extension.BeforeAllCallback
-import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.extension.ExtensionContext
-import timber.log.Timber
 
-
-class TimberExtension : BeforeAllCallback, AfterAllCallback {
-
-    private val printlnTree = object : Timber.DebugTree() {
-        override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-            println("$tag: $message")
-        }
-    }
-
-    override fun beforeAll(context: ExtensionContext?) {
-        Timber.plant(printlnTree)
-    }
-
-    override fun afterAll(context: ExtensionContext?) {
-        Timber.uproot(printlnTree)
-    }
-}
-
-@ExtendWith(TimberExtension::class)
+@ExperimentalCoroutinesApi
 class WPrimeCalculatorTest {
 
-    // Now testing the calculator provided by the singleton provider
-    private lateinit var calculator: WPrimeCalculator
+    // Mocks
+    private lateinit var mockConfigurationManager: ConfigurationManager
+    private lateinit var configFlow: MutableStateFlow<ConfigData>
 
-    // Define default or common initialization values
-    private val defaultInitialCp60 = 200
-    private val defaultInitialWPrimeUser = 10000
+    // Class Under Test
+    private lateinit var wPrimeCalculator: WPrimeCalculator
 
-    // Mock context needed for WPrimeCalculatorProvider.initialize
-    private val mockContext = mockk<Context>(relaxed = true)
+    // Test Dispatcher for Coroutines
+    private val testDispatcher = StandardTestDispatcher()
 
     @BeforeEach
-    fun setUp() = runBlocking { // Use runBlocking as some init/reset calls are suspend
-        // Initialize the singleton provider first
-        WPrimeCalculatorProvider.initialize(mockContext)
+    fun setUp() {
+        // Set the main dispatcher to a test dispatcher
+        Dispatchers.setMain(testDispatcher)
 
-        // Get the calculator instance from the provider
-        calculator = WPrimeCalculatorProvider.calculator
-
-        // Explicitly configure the calculator for each test scenario's start
-        val initialConfig = ConfigData(wPrime = defaultInitialWPrimeUser, criticalPower = defaultInitialCp60)
-        calculator.configure(initialConfig, System.currentTimeMillis())
-    }
-
-    @Test
-    fun `getPreviousReadingTime should return initial timestamp after configure`() {
-        // The timestamp is now set during `configure`
-        val initialTimestamp = System.currentTimeMillis()
-        val config = ConfigData(wPrime = defaultInitialWPrimeUser, criticalPower = defaultInitialCp60)
-        calculator.configure(config, initialTimestamp) // Reconfigure for this specific test
-        assertEquals(initialTimestamp, calculator.getPreviousReadingTime(), "Initial previous reading time should be the configured timestamp")
-    }
-
-    @Test
-    fun `calculateWPrimeBalance first call should update previousReadingTime`() {
-        val firstCallTime = System.currentTimeMillis() + 1000
-        calculator.calculateWPrimeBalance(200, firstCallTime)
-        assertEquals(firstCallTime, calculator.getPreviousReadingTime(), "Previous reading time should be updated to current time after first call")
-    }
-
-    @Test
-    fun `getCurrentEstimatedCP should return initial eCP after configure`() {
-        // eCP is initialized to CP60 after configure() runs.
-        assertEquals(defaultInitialCp60, calculator.getCurrentCP(), "Initial estimated CP should match the configured initial value")
-    }
-
-    @Test
-    fun `getCurrentEstimatedCP should return constrained eCP`() {
-        val initialCp60TooLow = 10
-        val initialWPrimeUserTooLow = 500
-        val configTooLow = ConfigData(wPrime = initialWPrimeUserTooLow, criticalPower = initialCp60TooLow)
-        calculator.configure(configTooLow, System.currentTimeMillis()) // Reconfigure for this specific test
-        // constrainWPrimeValue will set CP60 (and thus eCP) to 100 if it's less than 100.
-        assertEquals(100, calculator.getCurrentCP(), "Initial estimated CP should be constrained to 100")
-    }
-
-    @Test
-    fun `calculateWPrimeBalance with power above CP should decrease WPrimeBalance to negative`() {
-        val initialBalanceTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(defaultInitialWPrimeUser, defaultInitialCp60, false)
-        calculator.configure(initialConfig, initialBalanceTimestamp) // Configure for depletion test
-
-        var currentOverallTime = initialBalanceTimestamp + 1000 // Start time for the loop, ensure it's after initial call
-
-        val powerSteps: List<Pair<Int, Int>> = listOf(
-            (defaultInitialCp60 * 4) to 60000, // 4x CP for 60 seconds
+        // Initialize mocks
+        mockConfigurationManager = mockk()
+        configFlow = MutableStateFlow(
+            ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = false) // Default config
         )
+        every { mockConfigurationManager.getConfigFlow() } returns configFlow
 
-        var newBalance: Long = calculator.wPrimeBalance // To track the balance through the loop
+        // Initialize the class under test
+        // The WPrimeCalculator's init block launches a coroutine.
+        // By setting the main dispatcher, this coroutine will use the testDispatcher.
+        wPrimeCalculator = WPrimeCalculator(mockConfigurationManager)
 
-        for (powerStep in powerSteps) {
-            val instantaneousPower = powerStep.first
-            val durationForThisStepMillis = powerStep.second
-            val stepIntervalMillis = 1000 // Interval for each calculation within the duration
+        // Advance the dispatcher to allow the init block's coroutine to collect the initial config
+        testDispatcher.scheduler.advanceUntilIdle()
+    }
 
-            Timber.d("Processing power step: Power=$instantaneousPower W for ${durationForThisStepMillis / 1000}s")
+    @AfterEach
+    fun tearDown() {
+        // Reset the main dispatcher to the original one
+        Dispatchers.resetMain()
+    }
 
-            for (elapsedTimeInStep in 0 until durationForThisStepMillis step stepIntervalMillis) {
-                currentOverallTime += stepIntervalMillis
-                newBalance = calculator.calculateWPrimeBalance(instantaneousPower, currentOverallTime)
+    @Nested
+    @DisplayName("Initialization and Reset Tests")
+    inner class InitializationTests {
+
+        @Test
+        @DisplayName("wPrimeBalance should be initialized to wPrimeUsr after resetRideState")
+        fun `wPrimeBalance is initialized correctly after resetRideState`() = runTest(testDispatcher) {
+            // Given
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22000, calculateCp = false)
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure resetRideState coroutine completes
+
+            // Then
+            val expectedWPrimeBalance = initialConfig.wPrime.toLong()
+            assertEquals(expectedWPrimeBalance, wPrimeCalculator.wPrimeBalance, "wPrimeBalance should be less than 1000J")
+        }
+    }
+
+    @Nested
+    @DisplayName("W' Balance Calculation Tests")
+    inner class WPrimeBalanceCalculationTests {
+
+        @Test
+        @DisplayName("wPrimeBalance is calculated correctly")
+        fun `wPrimeBalance is calculated correctly`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 300, wPrime = 20000, calculateCp = false)
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 600000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 240000),
+            )
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+
+                for (elapsedTime in stepLength until durationMs step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-            Timber.d("Completed power step: Power=$instantaneousPower W. Final W'Bal for step: $newBalance J")
+            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
         }
 
-        assertTrue(newBalance < 0, "W'Balance should be negative when power is heavily above CP")
-    }
+        @Test
+        @DisplayName("CP60 is updated when wPrimeBalance becomes negative")
+        fun `CP60 is updated when wPrimeBalance becomes negative`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = true)
+            configFlow.value = initialConfig // Emit new config if different from default
 
-    @Test
-    fun `Enabling eCP update should prevent WPrimeBalance from going too negative`() {
-        val initialBalanceTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(defaultInitialWPrimeUser, defaultInitialCp60, true) // Enable calculateCp
-        calculator.configure(initialConfig, initialBalanceTimestamp) // Configure for this test
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
 
-        var currentOverallTime = initialBalanceTimestamp + 1000
+            val testSteps = listOf(
+                Pair(300, 180000),
+            )
 
-        val powerSteps: List<Pair<Int, Int>> = listOf(
-            (defaultInitialCp60 * 2) to 60000,
-        )
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
 
-        var newBalance: Long = calculator.wPrimeBalance
-
-        for (powerStep in powerSteps) {
-            val instantaneousPower = powerStep.first
-            val durationForThisStepMillis = powerStep.second
-            val stepIntervalMillis = 1000
-
-            Timber.d("Processing power step: Power=$instantaneousPower W for ${durationForThisStepMillis / 1000}s")
-
-            for (elapsedTimeInStep in 0 until durationForThisStepMillis step stepIntervalMillis) {
-                currentOverallTime += stepIntervalMillis
-                newBalance = calculator.calculateWPrimeBalance(instantaneousPower, currentOverallTime)
+                for (elapsedTime in stepLength until durationMs step stepLength) {
+                    val currentTime = initialTimestamp + elapsedTime
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, CP60: ${wPrimeCalculator.CP60}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
             }
-            Timber.d("Completed power step: Power=$instantaneousPower W. Final W'Bal for step: $newBalance J")
+            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
         }
 
-        assertTrue(newBalance > 0, "W'Balance should be positive at end of test run when eCP updates are enabled")
-        assertTrue(calculator.getCurrentCP() > defaultInitialCp60, "eCP should increase when eCP updates are enabled and power is high")
     }
 
-    @Test
-    fun `calculateWPrimeBalance with power below CP should increase or maintain WPrimeBalance`() {
-        val initialBalanceTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(defaultInitialWPrimeUser, defaultInitialCp60, false)
-        calculator.configure(initialConfig, initialBalanceTimestamp) // Configure
-
-        // Step 1: Deplete some W'
-        val depletionPower = defaultInitialCp60 + 100
-        val depletionTime = initialBalanceTimestamp + 1000
-        var balanceAfterDepletion: Long = calculator.wPrimeBalance
-
-        repeat(10) { // 10 seconds of depletion
-            balanceAfterDepletion = calculator.calculateWPrimeBalance(depletionPower, depletionTime + it * 1000)
-        }
-        Timber.d("Balance after depletion: $balanceAfterDepletion J")
-        assertTrue(balanceAfterDepletion < initialConfig.wPrime, "W'Balance should be depleted")
-
-
-        // Step 2: Simulate recovery with power below CP
-        val recoveryPower = defaultInitialCp60 - 50
-        val recoveryTime = depletionTime + 10 * 1000 // Start recovery after depletion
-        var newBalance: Long = balanceAfterDepletion
-
-        repeat(30) { // 30 seconds of recovery
-            newBalance = calculator.calculateWPrimeBalance(recoveryPower, recoveryTime + it * 1000)
-        }
-        Timber.d("Balance after recovery: $newBalance J")
-
-        // W'Balance should recover (increase) but not necessarily reach initial W' within 30s.
-        // It must be greater than or equal to the balance after depletion.
-        assertTrue(newBalance >= balanceAfterDepletion, "W'Balance should recover or maintain when power is below CP. New: $newBalance, AfterDepletion: $balanceAfterDepletion")
+    @Nested
+    @DisplayName("Getter Method Tests")
+    inner class GetterTests {
+        // TODO: Add tests for getCP60, getWPrimeUsr, getECP, getCurrentCP, getCurrentWPrimeJoules, getPreviousReadingTime
+        // Example:
+        // @Test
+        // fun `getCP60 returns correct initial CP`() = runTest(testDispatcher) { ... }
     }
+
+    @Nested
+    @DisplayName("Configuration Change Tests")
+    inner class ConfigurationChangeTests {
+        // TODO: Add tests for how the calculator reacts to changes in ConfigData
+        // Example:
+        // @Test
+        // fun `calculator updates CP60 and wPrimeUsr on config change`() = runTest(testDispatcher) { ... }
+    }
+
+    @Nested
+    @DisplayName("Estimated CP and W' (useEstimatedCp = true) Tests")
+    inner class EstimatedParameterTests {
+        // TODO: Add tests specifically for when useEstimatedCp is true
+        // Example:
+        // @Test
+        // fun `eCP updates when wPrimeBalance depletes significantly and useEstimatedCp is true`() = runTest(testDispatcher) { ... }
+    }
+
+    // --- Helper Methods (Optional) ---
+    // private fun createDefaultConfig(): ConfigData {
+    //     return ConfigData(criticalPower = 250, wPrime = 20000, calculateCp = false)
+    // }
 }

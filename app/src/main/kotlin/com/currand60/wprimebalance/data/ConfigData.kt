@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 data class ConfigData(
     val wPrime: Int,          // User's W' in Joules
     val criticalPower: Int,    // User's Critical Power in Watts
-    val calculateCp: Boolean = false // Should we calculate CP mid ride?
+    val calculateCp: Boolean = false, // Should we calculate CP mid ride?
+    val useKarooFtp: Boolean = true // Use the Karoo FTP for calculations
+
 ) {
     companion object {
         /**
@@ -16,7 +18,8 @@ data class ConfigData(
         val DEFAULT = ConfigData(
             wPrime = 10000,          // Default W' of 10000 J
             criticalPower = 250,    // Default Critical Power of 250 W
-            calculateCp = false // Default to not calculating CP mid ride
+            calculateCp = false, // Default to not calculating CP mid ride
+            useKarooFtp = true
         )
     }
 }
