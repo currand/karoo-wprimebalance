@@ -1,6 +1,9 @@
 package com.currand60.wprimebalance.screens
 
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,11 +36,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.currand60.wprimebalance.KarooSystemServiceProvider
+import com.currand60.wprimebalance.R
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -48,6 +55,7 @@ import timber.log.Timber
 @Composable
 fun MainScreen() {
 
+    val context = LocalContext.current
     val karooSystem = koinInject<KarooSystemServiceProvider>()
     val configManager: ConfigurationManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
@@ -130,8 +138,10 @@ fun MainScreen() {
         Timber.d("CP Input updated due to useKarooFtp/karooFtp change: $criticalPowerInput")
     }
 
+    val scrollState = rememberScrollState()
+    val isScrolledToBottom = scrollState.value == scrollState.maxValue
 
-        Box(
+    Box(
         modifier = Modifier.fillMaxSize()
     ){
         Column(
@@ -139,7 +149,7 @@ fun MainScreen() {
                 .padding(10.dp)
                 .background(MaterialTheme.colorScheme.background)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(5.dp))
         {
             Text(text="W' Balance Settings",
@@ -151,7 +161,8 @@ fun MainScreen() {
             Text("W' in Joules", Modifier.padding(start = 5.dp))
             OutlinedTextField(
                 value = wPrimeInput, // Bound to the string input state
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("W' input changed: $newValue")
@@ -183,7 +194,8 @@ fun MainScreen() {
             // Critical Power input field
             OutlinedTextField(
                 value = criticalPowerInput, // Bound to the string input state
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("CP input changed: $newValue")
@@ -234,7 +246,8 @@ fun MainScreen() {
                     }
                 )
                 Text(
-                    modifier = Modifier.padding(start = 5.dp)
+                    modifier = Modifier
+                        .padding(start = 5.dp)
                         .align(Alignment.CenterVertically),
                     text = "Estimate CP and W' mid-ride",
                 )
@@ -250,7 +263,8 @@ fun MainScreen() {
                     }
                 )
                 Text(
-                    modifier = Modifier.padding(start = 5.dp)
+                    modifier = Modifier
+                        .padding(start = 5.dp)
                         .align(Alignment.CenterVertically),
                     text = "Use the Karoo FTP?",
                 )
@@ -259,7 +273,7 @@ fun MainScreen() {
                 .fillMaxWidth()
                 .padding(5.dp)
             ) {
-                Text("Enter your W' in Joules and CP if you know them. If you are unsure " +
+                Text("Enter your W' in Joules and CP60 (FTP) if you know them. If you are unsure " +
                         "select the option to calculate it mid-ride. After a few hard efforts, you " +
                         "can see your estimate mid-ride and as an end of ride notification."
                 )
@@ -297,5 +311,22 @@ fun MainScreen() {
 
         }
         Spacer(modifier = Modifier.height(20.dp))
+        if (isScrolledToBottom) {
+            Image(
+                painter = painterResource(id = R.drawable.back), // Load your drawable
+                contentDescription = "Back", // For accessibility
+                modifier = Modifier
+                    .align(Alignment.BottomStart) // Aligns the image to the bottom-left
+                    .padding(bottom = 10.dp) // Add some padding from the screen edges
+                    .size(54.dp) // Set a suitable size for the clickable area and image
+                    .clickable {
+                        // Use LocalContext to find the activity and trigger back press
+                        val activity =
+                            context as? ComponentActivity // Or FragmentActivity
+                        activity?.onBackPressedDispatcher?.onBackPressed()
+                    }
+            )
+        }
     }
 }
+

@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.glance.preview)
     implementation(libs.androidx.glance.appwidget.preview)
     implementation(libs.mockk)
+    implementation(libs.androidx.navigation.runtime.android)
     testImplementation(libs.junit.jupiter)
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
