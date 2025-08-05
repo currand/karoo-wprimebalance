@@ -18,6 +18,7 @@ import kotlin.math.max
  Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
  */
 
+
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
 ) {
@@ -272,5 +273,21 @@ class WPrimeCalculator(
 
     fun getCurrentWPrimeJoules(): Int { // Added to expose the 'initial' W' for percentage calculation
         return wPrimeUsr
+    }
+
+    fun calculateTimeToExhaust(avgPower30sec: Int): Int {
+        // Return the time to exhaust W' in seconds based on current 30s
+        // average power. This is a LINEAR rate and does not use exponential
+        // decay as above.
+
+        val powerAboveCp = avgPower30sec - cP60
+
+        if (wPrimeBalance < 1000 || powerAboveCp <= 0) {
+            return 0
+        }
+
+
+        return (wPrimeBalance / powerAboveCp).toInt()
+
     }
 }

@@ -163,6 +163,35 @@ class WPrimeCalculatorTest {
 
     }
 
+    @Test
+    @DisplayName("wPrimeBalance time to exhaust is calculated correctly")
+    fun `wPrimeBalance time to exhaust is calculated correctly`() = runTest(testDispatcher) {
+        val stepLength = 1000L
+        val initialTimestamp = System.currentTimeMillis()
+        val initialConfig = ConfigData(criticalPower = 200, wPrime = 12000, calculateCp = false)
+        configFlow.value = initialConfig // Emit new config if different from default
+
+        // When
+        wPrimeCalculator.resetRideState(initialTimestamp)
+        val testSteps = listOf(
+            Pair(300, 60000),
+        )
+
+        for (step in testSteps) {
+            val power = step.first
+            val durationMs = step.second
+
+            for (elapsedTime in stepLength until durationMs step stepLength) {
+                val currentTime = initialTimestamp + elapsedTime
+                wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+            }
+        }
+        val timeToExhaust = wPrimeCalculator.calculateTimeToExhaust(400)
+        assertTrue( timeToExhaust in 25..35, "Time to exhaust should be ~30s. Actual: $timeToExhaust" )
+    }
+
+
     @Nested
     @DisplayName("Getter Method Tests")
     inner class GetterTests {
