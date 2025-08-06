@@ -16,5 +16,11 @@
         displayName="@string/percent_datatype"
         graphical="false"
         icon="@drawable/icon_gauge" />
+    <DataType
+        typeId="wprimetimetoexhaust"
+        description="@string/exhaust_datatype"
+        displayName="@string/exhaust_datatype"
+        graphical="false"
+        icon="@drawable/icon_gauge" />
     <DataType... />
 </ExtensionInfo>

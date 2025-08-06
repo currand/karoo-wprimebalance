@@ -3,4 +3,5 @@
     <string name="extension_name">W\' Balance</string>
     <string name="raw_datatype">W\' Balance</string>
     <string name="percent_datatype">% W\' Available</string>
+    <string name="exhaust_datatype">W\' Time to Exhaust</string>
 </resources>

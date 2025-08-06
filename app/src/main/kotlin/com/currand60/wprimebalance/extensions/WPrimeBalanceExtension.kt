@@ -4,6 +4,7 @@ import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
+import com.currand60.wprimebalance.data.WPrimeBalanceTimeToExhaustDataType
 import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.data.WPrimeDataSource
 import io.hammerhead.karooext.extension.KarooExtension
@@ -32,7 +33,8 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.0.3") {
     override val types by lazy {
         listOf(
             WPrimeBalanceDataType(extension),
-            WPrimeBalancePercentDataType(karooSystem, extension, wPrimeCalculator)
+            WPrimeBalancePercentDataType(karooSystem, extension, wPrimeCalculator),
+            WPrimeBalanceTimeToExhaustDataType(karooSystem, extension, wPrimeCalculator)
         )
     }
 
