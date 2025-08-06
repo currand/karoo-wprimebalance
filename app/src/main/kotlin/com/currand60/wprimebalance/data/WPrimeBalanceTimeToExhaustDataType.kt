@@ -10,6 +10,7 @@ import io.hammerhead.karooext.models.StreamState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -33,30 +34,20 @@ class WPrimeBalanceTimeToExhaustDataType(
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun startStream(emitter: Emitter<StreamState>) {
+//        val dataTypeId = DataType.dataTypeId(extension, TYPE_ID)
         val job = dataScope.launch {
-            val wPrimeFlow = karooSystem.streamDataFlow(
-                DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
-            )
-            wPrimeFlow
-                .map { streamState ->
-                when (streamState) {
-                    is StreamState.Streaming -> {
-                        val currentWPrimeJoules = calculator.getCurrentWPrimeJoules()
-                        val wPrimeBal = if (currentWPrimeJoules > 0) {
-                            (streamState.dataPoint.singleValue ?: 0.0) / currentWPrimeJoules * 100.0
-                        } else {
-                            Timber.w("WPrimeCalculator's current W' Joules is 0, cannot calculate percentage.")
-                            0.0 // Default to 0% or some other sensible value
-                        }
-                        StreamState.Streaming(
-                            DataPoint(
-                                dataTypeId,
-                                values = mapOf(DataType.Field.SINGLE to wPrimeBal),
-                            ),
-                        )
-                    } else -> {
-                        streamState
-                    }
+            karooSystem.streamDataFlow(DataType.Type.SMOOTHED_30S_AVERAGE_POWER)
+                .map { data ->
+                if (data is StreamState.Streaming) {
+                    val timeToExhaust = calculator.calculateTimeToExhaust(data.dataPoint.singleValue!!.toInt())
+                    StreamState.Streaming(
+                        DataPoint(
+                            dataTypeId,
+                            values = mapOf(DataType.Field.SINGLE to timeToExhaust.toDouble()),
+                        ),
+                    )
+                } else {
+                    StreamState.NotAvailable
                 }
             }.collect { emitter.onNext(it) }
         }
