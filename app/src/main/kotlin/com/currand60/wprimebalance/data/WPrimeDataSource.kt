@@ -16,7 +16,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 sealed interface WPrimeDevice {
     val source: Device
@@ -25,7 +24,6 @@ sealed interface WPrimeDevice {
 
 
 
-@ExperimentalAtomicApi
 class WPrimeDataSource(
     private val karooSystem: KarooSystemServiceProvider,
     extension: String,

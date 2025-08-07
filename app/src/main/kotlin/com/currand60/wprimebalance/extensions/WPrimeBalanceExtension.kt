@@ -1,5 +1,6 @@
 package com.currand60.wprimebalance.extensions
 
+import com.currand60.wprimebalance.BuildConfig
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
@@ -19,11 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import timber.log.Timber
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-
-@OptIn( ExperimentalAtomicApi::class)
-class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
+class WPrimeBalanceExtension : KarooExtension("wprimebalance", BuildConfig.VERSION_NAME) {
 
     private val karooSystem: KarooSystemServiceProvider by inject()
     private val wPrimeCalculator: WPrimeCalculator by inject()

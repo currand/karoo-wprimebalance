@@ -1,6 +1,5 @@
 package com.currand60.wprimebalance.data
 
-import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
@@ -13,9 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-@OptIn(ExperimentalAtomicApi::class, ExperimentalGlanceRemoteViewsApi::class)
 class WPrimeBalancePercentDataType(
     private val karooSystem: KarooSystemServiceProvider,
     extension: String,
