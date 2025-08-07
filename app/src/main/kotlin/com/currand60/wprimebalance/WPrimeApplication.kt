@@ -6,6 +6,7 @@ import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.OnStreamState
+import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.StreamState
 import io.hammerhead.karooext.models.UserProfile
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +15,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
@@ -28,7 +28,6 @@ class KarooSystemServiceProvider(private val context: Context) {
     val karooSystemService: KarooSystemService = KarooSystemService(context)
 
     private val _connectionState = MutableStateFlow(false)
-    val connectionState = _connectionState.asStateFlow()
 
     init {
         karooSystemService.connect { connected ->
@@ -53,6 +52,17 @@ class KarooSystemServiceProvider(private val context: Context) {
         return callbackFlow {
             val listenerId = karooSystemService.addConsumer { userProfile: UserProfile ->
                 trySendBlocking(userProfile)
+            }
+            awaitClose {
+                karooSystemService.removeConsumer(listenerId)
+            }
+        }
+    }
+
+    fun streamRideState(): Flow<RideState> {
+        return callbackFlow {
+            val listenerId = karooSystemService.addConsumer() { rideState: RideState ->
+                trySendBlocking(rideState)
             }
             awaitClose {
                 karooSystemService.removeConsumer(listenerId)

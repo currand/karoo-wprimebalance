@@ -1,11 +1,14 @@
 package com.currand60.wprimebalance.data
 
+import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import timber.log.Timber
 
 
 class WPrimeBalanceDataType(
+    private val karooSystem: KarooSystemServiceProvider,
     extension: String,
+    private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
 
     init {

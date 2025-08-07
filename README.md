@@ -17,16 +17,17 @@ You can sideload the app using the following steps for Karoo 2
 1. Prepare your Karoo for sideloading by following the [step-by-step guide](https://www.dcrainmaker.com/2021/02/how-to-sideload-android-apps-on-your-hammerhead-karoo-1-karoo-2.html) by DC Rainmaker.
 1. Install the app using the command `adb install app-release.apk`.
 1. **Reboot your Karoo**
-1. From your Karoo, add a new sensor. Click the extension icon at the top and select "_W' Balance_"
-1. In the Extension screen, configure FTP and W' estimate in Joules. This can be from a test or from an educated guess
-1. If you are unsure of your W', select the option to estimate your Critical Power and W' while riding.
-1. Add data fields for either raw W'  in Joules or % of available W' available.
-
 
 If you've Karoo 3 and v > 1.527 you can sideload the app using the following steps:
 
-1. Share [apk link](https://github.com/currand/karoo-wprimebalance/releases/download/0.1-alpha/app-release.apk) with Hammerhead companion app
+1. Share the apk link from the [releases page](https://github.com/currand/karoo-wprimebalance/releases) with Hammerhead companion app
 2. Install the app using the Hammerhead companion app.
+
+To configure:
+1. From your Karoo, add a new sensor. Click the extension icon at the top and select "_W' Balance_"
+1. In the Extension screen, configure FTP and W' estimate in Joules. This can be from a test or from an educated guess
+1. If you are unsure of your W', select the option to estimate your Critical Power and W' while riding.
+1. Add desired data fields.
 
 **It's mandatory to reset the Karoo after the installation (shutdown and start again).**
 
