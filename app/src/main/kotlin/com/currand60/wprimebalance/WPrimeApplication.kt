@@ -6,6 +6,7 @@ import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.managers.ConfigurationManager
 import io.hammerhead.karooext.KarooSystemService
 import io.hammerhead.karooext.models.OnStreamState
+import io.hammerhead.karooext.models.RideState
 import io.hammerhead.karooext.models.StreamState
 import io.hammerhead.karooext.models.UserProfile
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,17 @@ class KarooSystemServiceProvider(private val context: Context) {
         return callbackFlow {
             val listenerId = karooSystemService.addConsumer { userProfile: UserProfile ->
                 trySendBlocking(userProfile)
+            }
+            awaitClose {
+                karooSystemService.removeConsumer(listenerId)
+            }
+        }
+    }
+
+    fun streamRideState(): Flow<RideState> {
+        return callbackFlow {
+            val listenerId = karooSystemService.addConsumer() { rideState: RideState ->
+                trySendBlocking(rideState)
             }
             awaitClose {
                 karooSystemService.removeConsumer(listenerId)

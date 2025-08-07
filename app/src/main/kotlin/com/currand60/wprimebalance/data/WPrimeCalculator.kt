@@ -58,6 +58,8 @@ class WPrimeCalculator(
     private val nextLevelStep: Long = 1000L
     private var nextUpdateLevel: Long = 0L
     private var prevReadingTime: Long = 0L // Initialized to 0L, will be set on first calculate call
+    private var currentCp60: Int = 0
+    private var currentWPrimeUsr: Int = 0
 
     init {
         Timber.d("WPrimeCalculator created. Starting config observer.")
@@ -108,6 +110,8 @@ class WPrimeCalculator(
         // nextUpdateLevel is already set by _applyConfig
         prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
         nextUpdateLevel = 0L
+        currentCp60 = 0
+        currentWPrimeUsr = 0
 
 
         Timber.d("WPrimeCalculator ride state reset. W' Balance set to $wPrimeBalance J, initial timestamp: $initialTimestampMillis")
@@ -249,34 +253,36 @@ class WPrimeCalculator(
      * @return The updated W' Prime Balance in Joules. Note: as per the original C++ code, this value can be negative.
      */
     fun calculateWPrimeBalance(instantaneousPower: Int, currentTimeMillis: Long): Long {
-        // Call the core C++ logic faithfully, passing along the necessary class properties
-        // and the current timestamp for time delta calculation.
+
+        currentCp60 = cP60
+        currentWPrimeUsr = wPrimeUsr
+
         if (useEstimatedCp) {
             // Allow the algorithm to update CP and W' values mid-ride
-            cP60 = eCP
-            wPrimeUsr = ewPrimeMod
+            currentCp60 = eCP
+            currentWPrimeUsr = ewPrimeMod
         }
 
-        wPrimeBalanceWaterworth(instantaneousPower, cP60, wPrimeUsr, currentTimeMillis)
+        wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
 
         // Return the updated W' Prime Balance, which is a class property modified by the above function.
         return wPrimeBalance
     }
 
-    fun getPreviousReadingTime(): Long {
-        return prevReadingTime
+    fun getCurrentCP(): Int {
+        return currentCp60
     }
 
-    fun getCurrentCP(): Int {
+    fun getOriginalCP(): Int {
         return cP60
     }
 
-    fun getCurrentWPrimeCapacity(): Int {
+    fun getOriginalWPrimeCapacity(): Int {
         return wPrimeUsr
     }
 
     fun getCurrentWPrimeJoules(): Int { // Added to expose the 'initial' W' for percentage calculation
-        return wPrimeUsr
+        return currentWPrimeUsr
     }
 
     fun calculateTimeToExhaust(avgPower30sec: Int): Int {
