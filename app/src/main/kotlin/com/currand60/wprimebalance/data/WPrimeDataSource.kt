@@ -32,7 +32,7 @@ class WPrimeDataSource(
     private val calculator: WPrimeCalculator
 ) : WPrimeDevice {
 
-    private val dataTypeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override val source by lazy {
         Device(
@@ -48,15 +48,13 @@ class WPrimeDataSource(
     }
 
     override fun connect(emitter: Emitter<DeviceEvent>) {
-        val job = dataTypeScope.launch {
+        val job = dataScope.launch {
             emitter.onNext(OnConnectionStatus(ConnectionStatus.CONNECTED))
             Timber.d("start W' Balance stream")
 
             calculator.resetRideState(System.currentTimeMillis())
 
             karooSystem.streamDataFlow(DataType.Type.POWER).collect {
-//                    val power = 400
-//                    delay(1000)
                 when (it) {
                     is StreamState.Streaming -> {
                         val power = it.dataPoint.singleValue?.toInt() ?: 0

@@ -22,7 +22,7 @@ import kotlin.math.max
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
 ) {
-    private val calculatorScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val calculatorScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     var cP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
         private set
@@ -41,23 +41,19 @@ class WPrimeCalculator(
     // This property controls if the algorithm can update CP and W' mid-ride
     private var useEstimatedCp: Boolean = false
 
-    // --- Static variables from C++ functions, translated as private class properties to preserve state ---
-    // From `CalculateAveragePowerBelowCP` function
     private var countPowerBelowCP: Long = 0L
     private var sumPowerBelowCP: Long = 0L
 
-    // From `CalculateAveragePowerAboveCP` function (and implicitly used in `w_prime_balance_waterworth`)
     private var sumPowerAboveCP: Long = 0L
     private var countPowerAboveCP: Long = 0L
     private var avPower: Int = 0
 
-    // From `w_prime_balance_waterworth` function
     private var iTLim: Double = 0.0
-    private var timeSpent: Double = 0.0 // Changed to Long for consistency with SampleTime, as was done in C++ with unsigned long
+    private var timeSpent: Double = 0.0
     private var runningSum: Double = 0.0
     private val nextLevelStep: Long = 1000L
     private var nextUpdateLevel: Long = 0L
-    private var prevReadingTime: Long = 0L // Initialized to 0L, will be set on first calculate call
+    private var prevReadingTime: Long = 0L
     private var currentCp60: Int = 0
     private var currentWPrimeUsr: Int = 0
 
@@ -90,7 +86,7 @@ class WPrimeCalculator(
         ewPrimeMod = wPrimeUsr
         ewPrimeTest = wPrimeUsr
 
-        Timber.d("WPrimeCalculator _applyConfig completed: CP60=$cP60, wPrimeUsr=$wPrimeUsr, useEstimatedCp=$useEstimatedCp")
+        Timber.d("WPrimeCalculator config applied. CP60: $cP60 W': $wPrimeUsr UseEstimatedCp: $useEstimatedCp")
     }
 
     suspend fun resetRideState(initialTimestampMillis: Long) {
@@ -107,7 +103,7 @@ class WPrimeCalculator(
         avPower = 0
         iTLim = 0.0
         timeSpent = 0.0
-        // nextUpdateLevel is already set by _applyConfig
+
         prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
         nextUpdateLevel = 0L
         currentCp60 = 0
@@ -156,7 +152,7 @@ class WPrimeCalculator(
     private fun wPrimeBalanceWaterworth(iPower: Int, iCP: Int, iwPrime: Int, currentTimestampMillis: Long) {
         // Determine the individual sample time in seconds, it may/will vary during the workout.
         // Using the provided `currentTimestampMillis` for calculation.
-        val sampleTime: Double = (currentTimestampMillis - prevReadingTime) / 1000.0
+        val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
         prevReadingTime = currentTimestampMillis
 
         val tau = tauWPrimeBalance(iPower, iCP)
@@ -166,7 +162,6 @@ class WPrimeCalculator(
 
 //        Timber.d("Time:${timeSpent.toDouble()} ST: ${sampleTime.toDouble()} tau: $tau")
 
-        // w_prime is energy and measured in Joules = Watt*second.
         // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
         val wPrimeExpended = max(0, powerAboveCp).toDouble() * sampleTime // Calculates (Watts_above_CP) * (its duration in seconds)
 
@@ -212,9 +207,10 @@ class WPrimeCalculator(
     }
 
     private fun constrainWPrimeValue() {
-        if (cP60 < 100) {
-            cP60 = 100 // Update `CP60` to the lowest allowed level
-        }
+
+        cP60 = cP60.coerceIn(100, 600) // Example reasonable range for CP
+        wPrimeUsr = wPrimeUsr.coerceIn(5000, 50000) // Example reasonable range for W'
+
         // First, determine the "minimal" value for W_Prime according to a 20-min-test estimate, given the `CP60` value.
         val wPrimeEstimate = getWPrimeFromTwoParameterAlgorithm((cP60 * 1.045).toInt(), 1200.0, cP60)
 
@@ -224,9 +220,9 @@ class WPrimeCalculator(
     }
 
     private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Double, iwPrime: Int): Int {
-        val wPrimeDivTLim = (iwPrime.toDouble() / iTLim).toInt() // Type cast for correct calculations
+        val wPrimeDivTLim = (iwPrime.toDouble() / iTLim).toInt()
 
-        return if (iavPower > wPrimeDivTLim) { // Check for valid scope
+        return if (iavPower > wPrimeDivTLim) {
             (iavPower - wPrimeDivTLim) // Solve 2-parameter algorithm to estimate CP
         } else {
             eCP // Return the class's current `eCP` property.
@@ -285,16 +281,18 @@ class WPrimeCalculator(
         return currentWPrimeUsr
     }
 
-    fun calculateTimeToExhaust(avgPower30sec: Int): Int {
+    fun calculateTimeToExhaust(avgPower: Int): Int {
         // Return the time to exhaust W' in seconds based on current 10s
         // average power. This is a LINEAR rate and does not use exponential
         // decay as above.
 
-        val powerAboveCp = avgPower30sec - cP60
+        val powerAboveCp = avgPower - currentCp60 // Use currentCp60 for consistency
 
-        if (wPrimeBalance < 1000) {
-            return 0
-        } else if (powerAboveCp <= 0) {
+        // Handle edge cases more robustly:
+        if (powerAboveCp <= 0) {
+            return Int.MAX_VALUE // Return a large value to indicate effective infinity
+        }
+        if (wPrimeBalance <= 0) { // If W' balance is zero or negative, no time left
             return 0
         }
 

@@ -30,8 +30,6 @@ class MainActivity : ComponentActivity() {
             Timber.plant(Timber.DebugTree())
             Timber.d("Timber initialized in Debug mode.")
         } else {
-            // For release builds, you might want a non-logging tree or a crash reporting tree
-            // Timber.plant(CrashReportingTree()) // Example for a custom release tree
             Timber.d("Timber initialized in Release mode (no DebugTree planted).")
         }
         setContent {

@@ -1,7 +1,6 @@
 package com.currand60.wprimebalance.data
 
 import android.content.Context
-import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
@@ -17,9 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-@OptIn(ExperimentalAtomicApi::class, ExperimentalGlanceRemoteViewsApi::class)
 class WPrimeBalanceTimeToExhaustDataType(
     private val karooSystem: KarooSystemServiceProvider,
     extension: String,
@@ -42,7 +39,8 @@ class WPrimeBalanceTimeToExhaustDataType(
             karooSystem.streamDataFlow(DataType.Type.SMOOTHED_10S_AVERAGE_POWER)
                 .map { data ->
                 if (data is StreamState.Streaming) {
-                    val timeToExhaust = calculator.calculateTimeToExhaust(data.dataPoint.singleValue!!.toInt())
+                    val avgPower = data.dataPoint.singleValue?.toInt() ?: 0
+                    val timeToExhaust = calculator.calculateTimeToExhaust(avgPower)
                     StreamState.Streaming(
                         DataPoint(
                             dataTypeId,

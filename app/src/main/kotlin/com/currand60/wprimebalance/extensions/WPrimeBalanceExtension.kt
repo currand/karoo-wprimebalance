@@ -1,6 +1,5 @@
 package com.currand60.wprimebalance.extensions
 
-import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
@@ -16,13 +15,14 @@ import io.hammerhead.karooext.models.SystemNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
-@OptIn(ExperimentalGlanceRemoteViewsApi::class, ExperimentalAtomicApi::class)
+@OptIn( ExperimentalAtomicApi::class)
 class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
 
     private val karooSystem: KarooSystemServiceProvider by inject()
@@ -30,6 +30,8 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
     private val wPrimeDataSource: WPrimeDataSource by lazy { WPrimeDataSource(karooSystem, extension, wPrimeCalculator) }
     private var job: Job? = null
     var previousRideState: RideState = RideState.Idle
+
+    private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     init {
         Timber.d("WPrimeBalanceExtension created")
@@ -45,11 +47,11 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
 
     override fun startScan(emitter: Emitter<Device>) {
         Timber.d("WPrimeBalance Scan Started")
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        val scanJob = dataScope.launch {
             emitter.onNext(wPrimeDataSource.source)
         }
         emitter.setCancellable {
-            job.cancel()
+            scanJob.cancel()
         }
     }
 
@@ -64,7 +66,7 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
 
     override fun onCreate() {
         super.onCreate()
-        job = CoroutineScope(Dispatchers.IO).launch {
+        job = dataScope.launch {
             karooSystem.streamRideState().collect { rideState ->
                 if (previousRideState != rideState && rideState == RideState.Idle) {
                     if (wPrimeCalculator.getOriginalWPrimeCapacity() < wPrimeCalculator.getCurrentWPrimeJoules()) {

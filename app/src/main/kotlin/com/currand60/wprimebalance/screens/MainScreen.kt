@@ -85,57 +85,32 @@ fun MainScreen() {
             }
     }
 
-    LaunchedEffect(loadedConfig) {
-        if (currentConfig != loadedConfig) {
-            currentConfig = loadedConfig
-            Timber.d("currentConfig and input fields updated from loadedConfig: $currentConfig")
-        }
-    }
+    LaunchedEffect(loadedConfig, karooFtp) {
+        // Timber.d("Configuration or Karoo FTP change detected. loadedConfig: $loadedConfig, karooFtp: $karooFtp") // Conditional log
 
-    LaunchedEffect(karooSystem) {
-        if (currentConfig.useKarooFtp && karooFtp > 0) {
-            criticalPowerInput = karooFtp.toString()
-            // Also update the currentConfig's criticalPower so saving uses this value
-            currentConfig = currentConfig.copy(criticalPower = karooFtp)
-            criticalPowerError = false // Clear error if FTP is valid
-        } else if (currentConfig.useKarooFtp) {
-            criticalPowerInput = ""
-        }
-    }
+        var newConfig = loadedConfig.copy() // Create a mutable copy to update
 
-    LaunchedEffect(loadedConfig) {
-        Timber.d("loadedConfig changed: $loadedConfig. Updating currentConfig and inputs.")
-        currentConfig = loadedConfig
-        wPrimeInput = loadedConfig.wPrime.toString()
+        // Update W' input
+        wPrimeInput = newConfig.wPrime.toString()
 
-        if (loadedConfig.useKarooFtp && karooFtp > 0) {
-            criticalPowerInput = karooFtp.toString()
-            currentConfig = currentConfig.copy(criticalPower = karooFtp)
-        } else if (loadedConfig.useKarooFtp) {
-            criticalPowerInput = ""
-        }
-        else { // Not using Karoo FTP
-            criticalPowerInput = loadedConfig.criticalPower.toString()
-        }
-        Timber.d("currentConfig and input fields updated from loadedConfig: $currentConfig, CP_Input: $criticalPowerInput")
-    }
-
-    LaunchedEffect(currentConfig.useKarooFtp, karooFtp) {
-        Timber.d("useKarooFtp or karooFtp changed. useKarooFtp: ${currentConfig.useKarooFtp}, karooFtp: $karooFtp")
-        if (currentConfig.useKarooFtp) {
+        // Handle Critical Power input based on useKarooFtp
+        if (newConfig.useKarooFtp) {
             if (karooFtp > 0) {
                 criticalPowerInput = karooFtp.toString()
-                // Update the config's CP value if we just switched to using a valid Karoo FTP
-                currentConfig = currentConfig.copy(criticalPower = karooFtp)
-                criticalPowerError = false
+                newConfig = newConfig.copy(criticalPower = karooFtp) // Update config for saving
+                criticalPowerError = false // Clear error if FTP is valid
             } else {
-                criticalPowerInput = "" // Or currentConfig.criticalPower.toString()
+                criticalPowerInput = "" // No Karoo FTP, so input should be empty for user to fill
+                // Keep criticalPowerError state as is, or set to true if a valid CP is required
+                // even when Karoo FTP is enabled but zero.
             }
         } else {
-            // Not using Karoo FTP, set input to the manually stored criticalPower
-            criticalPowerInput = currentConfig.criticalPower.toString()
+            criticalPowerInput = newConfig.criticalPower.toString()
         }
-        Timber.d("CP Input updated due to useKarooFtp/karooFtp change: $criticalPowerInput")
+
+        // Only update currentConfig once after all derivations
+        currentConfig = newConfig
+        // Timber.d("currentConfig and input fields updated: $currentConfig, CP_Input: $criticalPowerInput") // Conditional log
     }
 
     val scrollState = rememberScrollState()
@@ -185,7 +160,7 @@ fun MainScreen() {
                 isError = wPrimeError,
                 supportingText = {
                     if (wPrimeError) {
-                        Text("Please enter a valid number (e.g., 20.5)")
+                        Text("Please enter a valid number")
                     }
                 },
                 enabled = !currentConfig.calculateCp

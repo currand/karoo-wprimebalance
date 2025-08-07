@@ -15,7 +15,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
@@ -29,7 +28,6 @@ class KarooSystemServiceProvider(private val context: Context) {
     val karooSystemService: KarooSystemService = KarooSystemService(context)
 
     private val _connectionState = MutableStateFlow(false)
-    val connectionState = _connectionState.asStateFlow()
 
     init {
         karooSystemService.connect { connected ->
