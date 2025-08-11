@@ -15,7 +15,7 @@ android {
         minSdk = 23
         targetSdk = 34
         versionCode = 1
-        versionName = "0.1.2"
+        versionName = "0.1.3"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -59,7 +59,7 @@ tasks.register("generateManifest") {
         val manifest = mapOf(
             "label" to "W' Balance",
             "packageName" to "com.currand60.wprimebalance",
-            "latestApkUrl" to "https://github.com/currand/karoo-wprimebalance/releases/download/v0.1.0/app-release.apk",
+            "latestApkUrl" to "https://github.com/currand/karoo-wprimebalance/releases/latest/download/app-release.apk",
             "latestVersion" to android.defaultConfig.versionName,
             "latestVersionCode" to android.defaultConfig.versionCode,
             "developer" to "currand60",

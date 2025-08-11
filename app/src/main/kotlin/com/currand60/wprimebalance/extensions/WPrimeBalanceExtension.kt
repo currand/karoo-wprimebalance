@@ -64,15 +64,6 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", BuildConfig.VERSI
 
     override fun onCreate() {
         super.onCreate()
-        karooSystem.karooSystemService.dispatch(
-            SystemNotification(
-                id = "test",
-                header = "Header",
-                message = "Test Message",
-                subText = "During your ride, a new W' Capacity was calculated to be: ${wPrimeCalculator.getCurrentWPrimeJoules()}J",
-                actionIntent = "com.currand60.wprimebalance.MAIN"
-            )
-        )
         job = dataScope.launch {
             karooSystem.streamRideState().collect { rideState ->
                 if (previousRideState != rideState && rideState == RideState.Idle) {
