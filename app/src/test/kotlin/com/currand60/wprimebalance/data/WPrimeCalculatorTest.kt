@@ -103,7 +103,7 @@ class WPrimeCalculatorTest {
 
             val testSteps = listOf(
                 Pair(0, 600000),
-                Pair(445, 180000),
+                Pair(470, 180000),
             )
 
             for (step in testSteps) {

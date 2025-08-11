@@ -15,7 +15,7 @@ android {
         minSdk = 23
         targetSdk = 34
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.1"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -48,6 +48,32 @@ android {
             merges += "META-INF/LICENSE-notice.md"
         }
     }
+}
+
+tasks.register("generateManifest") {
+    description = "Generates manifest.json with current version information"
+    group = "build"
+
+    doLast {
+        val manifestFile = file("$projectDir/manifest.json")
+        val manifest = mapOf(
+            "label" to "W' Balance",
+            "packageName" to "com.currand60.wprimebalance",
+            "latestApkUrl" to "https://github.com/currand/karoo-wprimebalance/releases/download/v0.1.0/app-release.apk",
+            "latestVersion" to android.defaultConfig.versionName,
+            "latestVersionCode" to android.defaultConfig.versionCode,
+            "developer" to "currand60",
+            "description" to "Calculates W' Balance during the ride and displays it in several formats",
+        )
+
+        val gson = groovy.json.JsonBuilder(manifest).toPrettyString()
+        manifestFile.writeText(gson)
+        println("Generated manifest.json with version ${android.defaultConfig.versionName} (${android.defaultConfig.versionCode})")
+    }
+}
+
+tasks.named("assemble") {
+    dependsOn("generateManifest")
 }
 
 java {
