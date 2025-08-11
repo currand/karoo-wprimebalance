@@ -1,5 +1,6 @@
 package com.currand60.wprimebalance.extensions
 
+import com.currand60.wprimebalance.BuildConfig
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
@@ -19,11 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import timber.log.Timber
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-
-@OptIn( ExperimentalAtomicApi::class)
-class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
+class WPrimeBalanceExtension : KarooExtension("wprimebalance", BuildConfig.VERSION_NAME) {
 
     private val karooSystem: KarooSystemServiceProvider by inject()
     private val wPrimeCalculator: WPrimeCalculator by inject()
@@ -66,6 +64,15 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
 
     override fun onCreate() {
         super.onCreate()
+        karooSystem.karooSystemService.dispatch(
+            SystemNotification(
+                id = "test",
+                header = "Header",
+                message = "Test Message",
+                subText = "During your ride, a new W' Capacity was calculated to be: ${wPrimeCalculator.getCurrentWPrimeJoules()}J",
+                actionIntent = "com.currand60.wprimebalance.MAIN"
+            )
+        )
         job = dataScope.launch {
             karooSystem.streamRideState().collect { rideState ->
                 if (previousRideState != rideState && rideState == RideState.Idle) {
@@ -74,7 +81,7 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", "0.1.0") {
                             SystemNotification(
                             "new-wprime-capacity",
                             "New W' Capacity",
-                                subText = "During your ride, a new W' Capacity was calculated to be: ${wPrimeCalculator.getCurrentWPrimeJoules()}J"
+                            subText = "During your ride, a new W' Capacity was calculated to be: ${wPrimeCalculator.getCurrentWPrimeJoules()}J"
                             )
                         )
                     }

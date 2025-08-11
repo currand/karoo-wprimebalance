@@ -229,7 +229,6 @@ class WPrimeCalculator(
         }
     }
 
-    @Suppress("SameParameterValue")
     private fun getWPrimeFromTwoParameterAlgorithm(iAvPower: Int, iTLim: Double, iCP: Int): Int {
         return if (iAvPower > iCP) { // Check for valid scope
             (iAvPower - iCP) * iTLim.toInt() // Solve 2-parameter algorithm to estimate new W-Prime
@@ -261,7 +260,6 @@ class WPrimeCalculator(
 
         wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
 
-        // Return the updated W' Prime Balance, which is a class property modified by the above function.
         return wPrimeBalance
     }
 
@@ -277,7 +275,7 @@ class WPrimeCalculator(
         return wPrimeUsr
     }
 
-    fun getCurrentWPrimeJoules(): Int { // Added to expose the 'initial' W' for percentage calculation
+    fun getCurrentWPrimeJoules(): Int {
         return currentWPrimeUsr
     }
 
@@ -289,14 +287,11 @@ class WPrimeCalculator(
         val powerAboveCp = avgPower - currentCp60 // Use currentCp60 for consistency
 
         // Handle edge cases more robustly:
-        if (powerAboveCp <= 0) {
-            return Int.MAX_VALUE // Return a large value to indicate effective infinity
-        }
-        if (wPrimeBalance <= 0) { // If W' balance is zero or negative, no time left
+        if (powerAboveCp <= 0 || wPrimeBalance <= 0) {
+             // If power is below CP, or W' is negative, no time to exhaust
             return 0
         }
 
         return (wPrimeBalance / powerAboveCp).toInt()
-
     }
 }
