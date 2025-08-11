@@ -18,6 +18,7 @@ import kotlin.math.max
  Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
  */
 
+private const val CP_TEST_DURATION_S = 1200.0
 
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
@@ -83,6 +84,8 @@ class WPrimeCalculator(
         }
         // Initialize/re-initialize algorithmic estimates based on (potentially constrained) user values
         eCP = cP60
+        currentCp60 = cP60
+        currentWPrimeUsr = wPrimeUsr
         ewPrimeMod = wPrimeUsr
         ewPrimeTest = wPrimeUsr
 
@@ -106,8 +109,8 @@ class WPrimeCalculator(
 
         prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
         nextUpdateLevel = 0L
-        currentCp60 = 0
-        currentWPrimeUsr = 0
+        currentCp60 = cP60
+        currentWPrimeUsr = wPrimeUsr
 
 
         Timber.d("WPrimeCalculator ride state reset. W' Balance set to $wPrimeBalance J, initial timestamp: $initialTimestampMillis")
@@ -190,16 +193,17 @@ class WPrimeCalculator(
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
             nextUpdateLevel -= nextLevelStep // Move to the next lower depletion level
+//            wPrimeBalance += nextLevelStep // Adjust W' balance by step level
             eCP = getCpFromTwoParameterAlgorithm(
                 avPower,
                 iTLim,
                 iwPrime
             ) // Estimate a new `eCP` value
             ewPrimeMod =
-                wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
+                currentWPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
             ewPrimeTest = getWPrimeFromTwoParameterAlgorithm(
                 (eCP * 1.045).toInt(),
-                1200.0,
+                CP_TEST_DURATION_S,
                 eCP
             ) // 20-Min-test estimate for W-Prime
         }
@@ -249,16 +253,13 @@ class WPrimeCalculator(
      */
     fun calculateWPrimeBalance(instantaneousPower: Int, currentTimeMillis: Long): Long {
 
-        currentCp60 = cP60
-        currentWPrimeUsr = wPrimeUsr
+        wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
 
         if (useEstimatedCp) {
             // Allow the algorithm to update CP and W' values mid-ride
             currentCp60 = eCP
             currentWPrimeUsr = ewPrimeMod
         }
-
-        wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
 
         return wPrimeBalance
     }
