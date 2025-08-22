@@ -87,6 +87,72 @@ class WPrimeCalculatorTest {
     inner class WPrimeBalanceCalculationTests {
 
         @Test
+        @DisplayName("wPrimeBalance matches values from https://medium.com/critical-powers/comparison-of-wbalance-algorithms-8838173e2c15")
+        fun `wPrimeBalance matches expected values`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            // The website says FTP of 300 but the plot was based on FTP of 350
+            val initialConfig = ConfigData(criticalPower = 350, wPrime = 20000, calculateCp = false)
+            configFlow.value = initialConfig
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 10 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 4 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 10 * 60 * 1000),
+
+            )
+
+            var lowestWPrime = wPrimeCalculator.getOriginalWPrimeCapacity()
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+
+                for (elapsedTime in stepLength until durationMs step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+                if (wPrimeCalculator.wPrimeBalance.toInt() < lowestWPrime) {
+                    lowestWPrime = wPrimeCalculator.wPrimeBalance.toInt()
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+            }
+            assertTrue(wPrimeCalculator.wPrimeBalance in 18500..18750, "wPrimeBalance should be ~18.6kJ. Actual: ${wPrimeCalculator.wPrimeBalance}")
+            assertTrue(lowestWPrime in 11250..11500, "Lowest value should be ~11.3kJ. Actual: $lowestWPrime")
+
+        }
+
+        @Test
         @DisplayName("wPrimeBalance is calculated correctly")
         fun `wPrimeBalance is calculated correctly`() = runTest(testDispatcher) {
             // Given
@@ -146,7 +212,7 @@ class WPrimeCalculatorTest {
                     val currentTime = initialTimestamp + elapsedTime
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, CP60: ${wPrimeCalculator.CP60}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
             }
             assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")

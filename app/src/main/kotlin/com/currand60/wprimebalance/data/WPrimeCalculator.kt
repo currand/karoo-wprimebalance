@@ -149,7 +149,7 @@ class WPrimeCalculator(
     }
 
     // The Waterworth method of calculating W' Balance.
-    private fun wPrimeBalanceWaterworth(iPower: Int, iCP: Int, iwPrime: Int, currentTimestampMillis: Long) {
+    private fun wPrimeBalanceWaterworth(iPower: Int, iCP: Int, currentWPrimeUsr: Int, currentTimestampMillis: Long) {
         // Determine the individual sample time in seconds, it may/will vary during the workout.
         // Using the provided `currentTimestampMillis` for calculation.
         val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
@@ -173,9 +173,9 @@ class WPrimeCalculator(
 
 //        Timber.d("Running Sum: $runningSum")
 
-        wPrimeBalance = (iwPrime.toDouble() - (runningSum * expTerm2)).toLong()
+        wPrimeBalance = (currentWPrimeUsr.toDouble() - (runningSum * expTerm2)).toLong()
 
-        Timber.d("W\' Balance: $wPrimeBalance J W\' expended: ${wPrimeExpended.toInt()} CP: $iCP W': $iwPrime")
+        Timber.d("W\' Balance: $wPrimeBalance J W\' expended: ${wPrimeExpended.toInt()} CP: $iCP W': $currentWPrimeUsr")
 
 
         //--------------- extra --------------------------------------------------------------------------------------
@@ -193,7 +193,7 @@ class WPrimeCalculator(
             eCP = getCpFromTwoParameterAlgorithm(
                 avPower,
                 iTLim,
-                iwPrime
+                currentWPrimeUsr
             ) // Estimate a new `eCP` value
             ewPrimeMod =
                 wPrimeUsr - nextUpdateLevel.toInt() // Adjust `ew_prime_modified` to the new depletion level
@@ -219,8 +219,8 @@ class WPrimeCalculator(
         }
     }
 
-    private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Double, iwPrime: Int): Int {
-        val wPrimeDivTLim = (iwPrime.toDouble() / iTLim).toInt()
+    private fun getCpFromTwoParameterAlgorithm(iavPower: Int, iTLim: Double, currentWPrimeUsr: Int): Int {
+        val wPrimeDivTLim = (currentWPrimeUsr.toDouble() / iTLim).toInt()
 
         return if (iavPower > wPrimeDivTLim) {
             (iavPower - wPrimeDivTLim) // Solve 2-parameter algorithm to estimate CP
