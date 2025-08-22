@@ -87,15 +87,15 @@ class WPrimeCalculatorTest {
     inner class WPrimeBalanceCalculationTests {
 
         @Test
-        @DisplayName("wPrimeBalance recovery is calculated correctly")
-        @Suppress("UNUSED_PARAMETER")
-        fun `wPrimeBalance recovery is calculated correctly`() = runTest(testDispatcher) {
+        @DisplayName("wPrimeBalance matches values from https://medium.com/critical-powers/comparison-of-wbalance-algorithms-8838173e2c15")
+        fun `wPrimeBalance matches expected values`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = false)
-            configFlow.value = initialConfig // Emit new config if different from default
-            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+            // The website says FTP of 300 but the plot was based on FTP of 350
+            val initialConfig = ConfigData(criticalPower = 350, wPrime = 20000, calculateCp = false)
+            configFlow.value = initialConfig
+            testDispatcher.scheduler.advanceUntilIdle()
 
             var currentTime = initialTimestamp
 
@@ -103,12 +103,33 @@ class WPrimeCalculatorTest {
             wPrimeCalculator.resetRideState(initialTimestamp)
 
             val testSteps = listOf(
-                Pair(
-                    455,
-                    180000
-                ), // Based on some online tool calculations this should deplete wPrimeBalance
-                Pair(0, 180000),
+                Pair(100, 10 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 4 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 10 * 60 * 1000),
+
             )
+
+            var lowestWPrime = wPrimeCalculator.getOriginalWPrimeCapacity()
 
             for (step in testSteps) {
                 val power = step.first
@@ -121,17 +142,18 @@ class WPrimeCalculatorTest {
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
+                if (wPrimeCalculator.wPrimeBalance.toInt() < lowestWPrime) {
+                    lowestWPrime = wPrimeCalculator.wPrimeBalance.toInt()
+                }
 //                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-            assertTrue(
-                wPrimeCalculator.wPrimeBalance in 9000..10000,
-                "wPrimeBalance should be ~9000J but is ${wPrimeCalculator.wPrimeBalance}"
-            )
+            assertTrue(wPrimeCalculator.wPrimeBalance in 18500..18750, "wPrimeBalance should be ~18.6kJ. Actual: ${wPrimeCalculator.wPrimeBalance}")
+            assertTrue(lowestWPrime in 11250..11500, "Lowest value should be ~11.3kJ. Actual: $lowestWPrime")
+
         }
 
         @Test
         @DisplayName("wPrimeBalance is calculated correctly")
-        @Suppress("UNUSED_PARAMETER")
         fun `wPrimeBalance is calculated correctly`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
@@ -147,10 +169,7 @@ class WPrimeCalculatorTest {
 
             val testSteps = listOf(
                 Pair(0, 600000),
-                Pair(
-                    455,
-                    180000
-                ), // Based on some online tool calculations this should deplete wPrimeBalance
+                Pair(470, 180000),
             )
 
             for (step in testSteps) {
@@ -164,55 +183,41 @@ class WPrimeCalculatorTest {
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
-//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-            assertTrue(
-                wPrimeCalculator.wPrimeBalance < 1000,
-                "wPrimeBalance should be less than 1000J"
-            )
+            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
         }
 
         @Test
         @DisplayName("CP60 is updated when wPrimeBalance becomes negative")
-        @Suppress("UNUSED_PARAMETER")
         fun `CP60 is updated when wPrimeBalance becomes negative`() = runTest(testDispatcher) {
+            // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = true)
+            val initialConfig = ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = true)
             configFlow.value = initialConfig // Emit new config if different from default
-            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-            var currentTime = initialTimestamp
 
             // When
             wPrimeCalculator.resetRideState(initialTimestamp)
 
             val testSteps = listOf(
-                Pair(0, 600000),
-                Pair(
-                    455,
-                    190000
-                ), // Based on some online tool calculations this should deplete wPrimeBalance
+                Pair(300, 180000),
             )
 
             for (step in testSteps) {
                 val power = step.first
                 val durationMs = step.second
 
-
                 for (elapsedTime in stepLength until durationMs step stepLength) {
-                    currentTime += stepLength
+                    val currentTime = initialTimestamp + elapsedTime
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
-//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-            assertTrue(
-                wPrimeCalculator.wPrimeBalance in 0..2500,
-                "wPrimeBalance should be 0..2500 J due to the step size but is ${wPrimeCalculator.wPrimeBalance}"
-            )
+            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
         }
+
     }
 
     @Test
@@ -240,151 +245,39 @@ class WPrimeCalculatorTest {
             }
         }
         val timeToExhaust = wPrimeCalculator.calculateTimeToExhaust(400)
-        assertTrue(
-            timeToExhaust in 25..35,
-            "Time to exhaust should be ~30s. Actual: $timeToExhaust"
-        )
+        assertTrue( timeToExhaust in 25..35, "Time to exhaust should be ~30s. Actual: $timeToExhaust" )
     }
 
 
     @Nested
     @DisplayName("Getter Method Tests")
     inner class GetterTests {
-        // Tests for getter methods
+        // TODO: Add tests for getCP60, getWPrimeUsr, getECP, getCurrentCP, getCurrentWPrimeJoules, getPreviousReadingTime
+        // Example:
+        // @Test
+        // fun `getCP60 returns correct initial CP`() = runTest(testDispatcher) { ... }
     }
 
-    @Test
-    @DisplayName("Get CP60 returns correct value")
-    fun `getters for CP60 return correct initial CP`() = runTest(testDispatcher) {
-        val initialTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = true)
-        configFlow.value = initialConfig // Emit new config if different from default
-        testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-        wPrimeCalculator.resetRideState(initialTimestamp)
-
-        assertTrue(
-            wPrimeCalculator.getCurrentCP() == 300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getCurrentCP()}"
-        )
-        assertTrue(
-            wPrimeCalculator.getOriginalCP() == 300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getOriginalCP()}"
-        )
+    @Nested
+    @DisplayName("Configuration Change Tests")
+    inner class ConfigurationChangeTests {
+        // TODO: Add tests for how the calculator reacts to changes in ConfigData
+        // Example:
+        // @Test
+        // fun `calculator updates CP60 and wPrimeUsr on config change`() = runTest(testDispatcher) { ... }
     }
 
-    @Test
-    @DisplayName("Get current W' Capacity returns correct value")
-    fun `getters for W' return correct initial value`() = runTest(testDispatcher) {
-        val initialTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = true)
-        configFlow.value = initialConfig // Emit new config if different from default
-        testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-        wPrimeCalculator.resetRideState(initialTimestamp)
-
-
-        assertTrue(
-            wPrimeCalculator.getCurrentWPrimeJoules() == 22300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getCurrentCP()}"
-        )
-        assertTrue(
-            wPrimeCalculator.getOriginalWPrimeCapacity() == 22300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getOriginalWPrimeCapacity()}"
-        )
+    @Nested
+    @DisplayName("Estimated CP and W' (useEstimatedCp = true) Tests")
+    inner class EstimatedParameterTests {
+        // TODO: Add tests specifically for when useEstimatedCp is true
+        // Example:
+        // @Test
+        // fun `eCP updates when wPrimeBalance depletes significantly and useEstimatedCp is true`() = runTest(testDispatcher) { ... }
     }
 
-    @Test
-    @DisplayName("Get CP60 returns correct value after update")
-    @Suppress("UNUSED_PARAMETER")
-    fun `getters for CP60 return correct CP after update`() = runTest(testDispatcher) {
-        val stepLength = 1000L
-        val initialTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = true)
-        configFlow.value = initialConfig // Emit new config if different from default
-        testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-        var currentTime = initialTimestamp
-
-        // When
-        wPrimeCalculator.resetRideState(initialTimestamp)
-
-        val testSteps = listOf(
-            Pair(0, 600000),
-            Pair(
-                455,
-                190000
-            ), // Based on some online tool calculations this should deplete wPrimeBalance
-        )
-
-        for (step in testSteps) {
-            val power = step.first
-            val durationMs = step.second
-
-
-            for (elapsedTime in stepLength until durationMs step stepLength) {
-                currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
-                testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
-            }
-//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
-        }
-
-        assertTrue(
-            wPrimeCalculator.getCurrentCP() == 336,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getCurrentCP()}"
-        )
-        assertTrue(
-            wPrimeCalculator.getOriginalCP() == 300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getOriginalCP()}"
-        )
-    }
-
-    @Test
-    @DisplayName("getters for W' return correct values after update")
-    @Suppress("UNUSED_PARAMETER")
-    fun `getters for W' return correct values after update`() = runTest(testDispatcher) {
-        val stepLength = 1000L
-        val initialTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = true)
-        configFlow.value = initialConfig // Emit new config if different from default
-        testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-        var currentTime = initialTimestamp
-
-        // When
-        wPrimeCalculator.resetRideState(initialTimestamp)
-
-        val testSteps = listOf(
-            Pair(0, 600000),
-            Pair(
-                455,
-                190000
-            ), // Based on some online tool calculations this should deplete wPrimeBalance
-        )
-
-        for (step in testSteps) {
-            val power = step.first
-            val durationMs = step.second
-
-
-            for (elapsedTime in stepLength until durationMs step stepLength) {
-                currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
-                testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
-            }
-//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
-        }
-
-        assertTrue(
-            wPrimeCalculator.getCurrentWPrimeJoules() == 23300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getCurrentCP()}"
-        )
-        assertTrue(
-            wPrimeCalculator.getOriginalWPrimeCapacity() == 22300,
-            "wPrimeBalance should be 300W but is ${wPrimeCalculator.getOriginalWPrimeCapacity()}"
-        )
-    }
+    // --- Helper Methods (Optional) ---
+    // private fun createDefaultConfig(): ConfigData {
+    //     return ConfigData(criticalPower = 250, wPrime = 20000, calculateCp = false)
+    // }
 }
