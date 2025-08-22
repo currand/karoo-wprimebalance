@@ -13,12 +13,16 @@ import kotlin.math.exp
 import kotlin.math.max
 
 /**
- Reproduced from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
- Extremely heavy use of AI to convert to Kotlin from C++ and a bunch of vibe coding
- Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
+Reproduced from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
+Extremely heavy use of AI to convert to Kotlin from C++ and a bunch of vibe coding
+Your mileage may vary, not available in all 50 states, prices higher in HI and AK.
+ *
  */
 
 private const val CP_TEST_DURATION_S = 1200.0
+private const val MIN_MATCH_JOULE_DROP = 2000L // Minimum drop to qualify as a match
+private const val RECOVERY_MARGIN_MS = 15_000L // 15 seconds
+private const val EFFORT_POWER_THRESHOLD_PERCENT_CP = 1.05 // 105% of CP to initiate effort block
 
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
@@ -57,6 +61,20 @@ class WPrimeCalculator(
     private var prevReadingTime: Long = 0L
     private var currentCp60: Int = 0
     private var currentWPrimeUsr: Int = 0
+
+    // Match calculation related variables
+    var totalMatches: Int = 0
+        private set
+    var lastMatchDepletionDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
+        private set
+    var lastMatchJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
+        private set
+
+    private var isInEffortBlock: Boolean = false
+    private var wPrimeStartOfCurrentBlock: Long = 0L // W' balance at the start of the current effort block
+    private var effortBlockStartTimeMillis: Long = 0L // Timestamp when the current effort block started
+    private var timeBelowCPLimit: Long = 0L // Accumulates time (ms) spent below CP for recovery margin
+
 
     init {
         Timber.d("WPrimeCalculator created. Starting config observer.")
@@ -112,6 +130,15 @@ class WPrimeCalculator(
         currentCp60 = cP60
         currentWPrimeUsr = wPrimeUsr
 
+        // Reset match calculation variables
+        totalMatches = 0
+        lastMatchDepletionDuration = 0L
+        lastMatchJoulesDepleted = 0L
+        isInEffortBlock = false
+        wPrimeStartOfCurrentBlock = 0L
+        effortBlockStartTimeMillis = 0L
+        timeBelowCPLimit = 0L
+
 
         Timber.d("WPrimeCalculator ride state reset. W' Balance set to $wPrimeBalance J, initial timestamp: $initialTimestampMillis")
     }
@@ -163,8 +190,6 @@ class WPrimeCalculator(
 
         val powerAboveCp = (iPower - iCP)
 
-//        Timber.d("Time:${timeSpent.toDouble()} ST: ${sampleTime.toDouble()} tau: $tau")
-
         // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
         val wPrimeExpended = max(0, powerAboveCp).toDouble() * sampleTime // Calculates (Watts_above_CP) * (its duration in seconds)
 
@@ -174,12 +199,7 @@ class WPrimeCalculator(
 
         runningSum = runningSum + (wPrimeExpended * expTerm1) // Determine the running sum
 
-//        Timber.d("Running Sum: $runningSum")
-
         wPrimeBalance = (currentWPrimeUsr.toDouble() - (runningSum * expTerm2)).toLong()
-
-        Timber.d("W\' Balance: $wPrimeBalance J W\' expended: ${wPrimeExpended.toInt()} CP: $iCP W': $currentWPrimeUsr")
-
 
         //--------------- extra --------------------------------------------------------------------------------------
         // This section implements logic to dynamically update estimated CP and W' based on depletion levels.
@@ -188,12 +208,9 @@ class WPrimeCalculator(
             iTLim += sampleTime // Time to exhaustion: accurate sum of every second spent above CP
         }
 
-//        Timber.d(" [$CountPowerAboveCP]")
-
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
             nextUpdateLevel -= nextLevelStep // Move to the next lower depletion level
-//            wPrimeBalance += nextLevelStep // Adjust W' balance by step level
             eCP = getCpFromTwoParameterAlgorithm(
                 avPower,
                 iTLim,
@@ -207,7 +224,6 @@ class WPrimeCalculator(
                 eCP
             ) // 20-Min-test estimate for W-Prime
         }
-            Timber.d("Update of eCP - ew_prime $ewPrimeMod - avPower: $avPower - T-lim:$iTLim --> eCP: $eCP --> Test estimate of W-Prime: $ewPrimeTest")
     }
 
     private fun constrainWPrimeValue() {
@@ -244,14 +260,14 @@ class WPrimeCalculator(
     /**
      * Calculates and updates the W' Prime Balance based on the instantaneous power and provided timestamp.
      * This is the primary external method to interact with the calculator.
-     * It orchestrates the internal calculations by calling the faithfully reproduced
-     * `w_prime_balance_waterworth` function.
      *
      * @param instantaneousPower The current instantaneous power reading in Watts.
      * @param currentTimeMillis The current timestamp of this power reading in milliseconds.
-     * @return The updated W' Prime Balance in Joules. Note: as per the original C++ code, this value can be negative.
+     * @return The updated W' Prime Balance in Joules.
      */
     fun calculateWPrimeBalance(instantaneousPower: Int, currentTimeMillis: Long): Long {
+
+        calculateMatches(instantaneousPower, currentTimeMillis)
 
         wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
 
@@ -263,6 +279,55 @@ class WPrimeCalculator(
 
         return wPrimeBalance
     }
+
+    /**
+     * Calculates and updates the number of "matches" based on W' balance depletion.
+     * A match is defined by a single effort resulting in a >= MIN_MATCH_JOULE_DROP.
+     * An effort is defined by an "effort block" which is considered continuous
+     * if recovery (power below CP) is less than RECOVERY_MARGIN_MS.
+     */
+    private fun calculateMatches(instantaneousPower: Int, currentTimeMillis: Long) {
+        val sampleTimeMillis = currentTimeMillis - prevReadingTime
+
+        val thresholdPowerForEffort = (currentCp60 * EFFORT_POWER_THRESHOLD_PERCENT_CP).toInt()
+
+        // State 1: Not in an effort block
+        if (!isInEffortBlock) {
+            // Condition to start a new effort block: Power above threshold
+            if (instantaneousPower >= thresholdPowerForEffort) {
+                isInEffortBlock = true
+                wPrimeStartOfCurrentBlock = wPrimeBalance // Set baseline for this block
+                effortBlockStartTimeMillis = currentTimeMillis
+                timeBelowCPLimit = 0L // Reset recovery timer
+            }
+        } else {
+            // State 2: In an effort block
+            // Check for effort block end (recovery margin)
+            if (instantaneousPower < currentCp60) { // If power is below CP
+                timeBelowCPLimit += sampleTimeMillis
+                if (timeBelowCPLimit >= RECOVERY_MARGIN_MS) {
+                    // Effort block has ended due to sufficient recovery
+                    val currentBlockDepletion = wPrimeStartOfCurrentBlock - wPrimeBalance
+
+                    if (currentBlockDepletion >= MIN_MATCH_JOULE_DROP) {
+                        totalMatches++
+                        lastMatchJoulesDepleted = currentBlockDepletion
+                        lastMatchDepletionDuration = currentTimeMillis - effortBlockStartTimeMillis
+                    }
+
+                    // Reset block variables regardless of whether a match was counted
+                    isInEffortBlock = false
+                    wPrimeStartOfCurrentBlock = 0L // Clear baseline
+                    effortBlockStartTimeMillis = 0L
+                    timeBelowCPLimit = 0L // Reset recovery timer
+                }
+            } else {
+                // If power is back above CP, reset recovery timer
+                timeBelowCPLimit = 0L
+            }
+        }
+    }
+
 
     fun getCurrentCP(): Int {
         return currentCp60
@@ -289,7 +354,7 @@ class WPrimeCalculator(
 
         // Handle edge cases more robustly:
         if (powerAboveCp <= 0 || wPrimeBalance <= 0) {
-             // If power is below CP, or W' is negative, no time to exhaust
+            // If power is below CP, or W' is negative, no time to exhaust
             return 0
         }
 
