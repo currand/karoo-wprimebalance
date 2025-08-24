@@ -29,19 +29,14 @@ class WPrimeCalculator(
 ) {
     private val calculatorScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    var cP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
-        private set
-    var wPrimeUsr: Int = 0 // Your (estimate of) W-prime or a base value
-        private set
+    private var cP60: Int = 0 // Your (estimate of) Critical Power, more or less the same as FTP
+    private var wPrimeUsr: Int = 0 // Your (estimate of) W-prime or a base value
+
     // These represent the 'algorithmic' or 'modified' values that change mid-ride
-    var eCP: Int = 0 // Algorithmic estimate of Critical Power during intense workout
-        private set
-    var ewPrimeMod: Int = 0 // First order estimate of W-prime modified during intense workout
-        private set
-    var ewPrimeTest: Int = 0 // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
-        private set
-    var wPrimeBalance: Long = 0L // Can be negative !!! (initialized to 0 as in C++ global scope)
-        private set
+    private var eCP: Int = 0 // Algorithmic estimate of Critical Power during intense workout
+    private var ewPrimeMod: Int = 0 // First order estimate of W-prime modified during intense workout
+    private var ewPrimeTest: Int = 0 // 20-min-test algorithmic estimate (20 minute @ 5% above eCP) of W-prime for a given eCP!
+    private  var wPrimeBalance: Long = 0L // Can be negative !!! (initialized to 0 as in C++ global scope)
 
     // This property controls if the algorithm can update CP and W' mid-ride
     private var useEstimatedCp: Boolean = false
@@ -63,13 +58,9 @@ class WPrimeCalculator(
     private var currentWPrimeUsr: Int = 0
 
     // Match calculation related variables
-    var totalMatches: Int = 0
-        private set
-    var lastMatchDepletionDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
-        private set
-    var lastMatchJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
-        private set
-
+    private var totalMatches: Int = 0
+    private var lastMatchDepletionDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
+    private var lastMatchJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
     private var isInEffortBlock: Boolean = false
     private var wPrimeStartOfCurrentBlock: Long = 0L // W' balance at the start of the current effort block
     private var effortBlockStartTimeMillis: Long = 0L // Timestamp when the current effort block started
@@ -111,7 +102,6 @@ class WPrimeCalculator(
     }
 
     suspend fun resetRideState(initialTimestampMillis: Long) {
-        Timber.d("Resetting WPrimeCalculator ride state.")
 
         val latestConfig = configurationManager.getConfigFlow().first() // Get current value
         applyConfig(latestConfig) // Apply it to update CP60, wPrimeUsr etc.
@@ -328,6 +318,9 @@ class WPrimeCalculator(
         }
     }
 
+    fun getWPrimeBalance(): Long {
+        return wPrimeBalance
+    }
 
     fun getCurrentCP(): Int {
         return currentCp60
@@ -343,6 +336,22 @@ class WPrimeCalculator(
 
     fun getCurrentWPrimeJoules(): Int {
         return currentWPrimeUsr
+    }
+
+    fun getMatches(): Int {
+        return totalMatches
+    }
+
+    fun getLastMatchJoulesDepleted(): Long {
+        return lastMatchJoulesDepleted
+    }
+
+    fun getLastMatchDepletionDuration(): Long {
+        return lastMatchDepletionDuration
+    }
+
+    fun getInEffortBlock(): Boolean {
+        return isInEffortBlock
     }
 
     fun calculateTimeToExhaust(avgPower: Int): Int {

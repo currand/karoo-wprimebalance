@@ -78,7 +78,7 @@ class WPrimeCalculatorTest {
 
             // Then
             val expectedWPrimeBalance = initialConfig.wPrime.toLong()
-            assertEquals(expectedWPrimeBalance, wPrimeCalculator.wPrimeBalance, "wPrimeBalance should be less than 1000J")
+            assertEquals(expectedWPrimeBalance, wPrimeCalculator.getWPrimeBalance(), "wPrimeBalance should be less than 1000J")
         }
     }
 
@@ -142,12 +142,12 @@ class WPrimeCalculatorTest {
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
-                if (wPrimeCalculator.wPrimeBalance.toInt() < lowestWPrime) {
-                    lowestWPrime = wPrimeCalculator.wPrimeBalance.toInt()
+                if (wPrimeCalculator.getWPrimeBalance().toInt() < lowestWPrime) {
+                    lowestWPrime = wPrimeCalculator.getWPrimeBalance().toInt()
                 }
 //                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
             }
-            assertTrue(wPrimeCalculator.wPrimeBalance in 18500..18750, "wPrimeBalance should be ~18.6kJ. Actual: ${wPrimeCalculator.wPrimeBalance}")
+            assertTrue(wPrimeCalculator.getWPrimeBalance() in 18500..18750, "wPrimeBalance should be ~18.6kJ. Actual: ${wPrimeCalculator.getWPrimeBalance()}")
             assertTrue(lowestWPrime in 11250..11500, "Lowest value should be ~11.3kJ. Actual: $lowestWPrime")
 
         }
@@ -183,9 +183,9 @@ class WPrimeCalculatorTest {
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
-                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
             }
-            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
+            assertTrue(wPrimeCalculator.getWPrimeBalance() < 1000, "wPrimeBalance should be less than 1000J")
         }
 
         @Test
@@ -212,10 +212,10 @@ class WPrimeCalculatorTest {
                     val currentTime = initialTimestamp + elapsedTime
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
                 }
             }
-            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
+            assertTrue(wPrimeCalculator.getWPrimeBalance() < 1000, "wPrimeBalance should be less than 1000J")
         }
 
     }

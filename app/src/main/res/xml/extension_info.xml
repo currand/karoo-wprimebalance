@@ -22,5 +22,11 @@
         displayName="@string/exhaust_datatype"
         graphical="false"
         icon="@drawable/icon_gauge" />
+    <DataType
+        typeId="matches"
+        description="@string/match_description"
+        displayName="@string/match_datatype"
+        graphical="true"
+        icon="@drawable/icon_gauge" />
     <DataType... />
 </ExtensionInfo>

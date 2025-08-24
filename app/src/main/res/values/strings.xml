@@ -2,6 +2,13 @@
     <string name="app_name">W\' Balance</string>
     <string name="extension_name">W\' Balance</string>
     <string name="raw_datatype">W\' Balance</string>
+    <string name="raw_description">W\' Balance in Joules</string>
     <string name="percent_datatype">% W\' Available</string>
+    <string name="percent_description">Percent of W\' Capacity available</string>
     <string name="exhaust_datatype">W\' Time to Exhaust</string>
+    <string name="exhaust_description">Time until exhaust based on 10s power</string>
+    <string name="match_datatype">Matches</string>
+    <string name="match_description">Display matches burned during ride.\nTitle bar will turn red during an effort</string>
+
+
 </resources>
