@@ -21,19 +21,18 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-class MatchDataType(
+class LastMatchJoules(
     private val karooSystem: KarooSystemServiceProvider,
     extension: String,
     private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
-    private val glance = GlanceRemoteViews()
 
     init {
-        Timber.d("MatchDataType created")
+        Timber.d("LastMatchJoules created")
     }
 
     companion object {
-        const val TYPE_ID = "matches"
+        const val TYPE_ID = "lastmatchjoules"
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -47,11 +46,11 @@ class MatchDataType(
                 .map { streamState ->
                 when (streamState) {
                     is StreamState.Streaming -> {
-                        val matches = calculator.getMatches()
+                        val lastMatchJoules = calculator.getLastMatchJoulesDepleted()
                         StreamState.Streaming(
                             DataPoint(
                                 dataTypeId,
-                                values = mapOf(DataType.Field.SINGLE to matches.toDouble()),
+                                values = mapOf(DataType.Field.SINGLE to lastMatchJoules.toDouble()),
                             ),
                         )
                     } else -> {
@@ -62,37 +61,6 @@ class MatchDataType(
         }
         emitter.setCancellable {
             job.cancel()
-        }
-    }
-
-    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        val configJob = dataScope.launch {
-            emitter.onNext(
-                UpdateGraphicConfig(showHeader = false)
-            )
-        }
-        val viewJob = dataScope.launch {
-            karooSystem.streamDataFlow(
-                DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
-            ).collect {
-                val matches = when(config.preview) {
-                    false -> calculator.getMatches()
-                    // random number between 0 and 100
-                    true -> (0..100).random()
-                }
-                val inEffort = when(config.preview) {
-                    false -> calculator.getInEffortBlock()
-                    true -> System.currentTimeMillis() % 2500 == 0L
-                }
-                val result = glance.compose(context, DpSize.Unspecified) {
-                    MatchView(context, inEffort, matches, config.alignment, config.textSize)
-                }
-                emitter.updateView(result.remoteViews)
-            }
-        }
-        emitter.setCancellable {
-            viewJob.cancel()
-            configJob.cancel()
         }
     }
 }

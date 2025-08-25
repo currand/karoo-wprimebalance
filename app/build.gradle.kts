@@ -83,6 +83,7 @@ java {
 }
 
 dependencies {
+    implementation(libs.androidx.glance.material3)
     implementation(libs.hammerhead.karoo.ext)
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.androidx.lifeycle)

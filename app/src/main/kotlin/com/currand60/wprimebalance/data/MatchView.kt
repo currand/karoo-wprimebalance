@@ -1,7 +1,6 @@
 package com.currand60.wprimebalance.data
 
 import android.content.Context
-import android.util.AttributeSet
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.TextUnit
@@ -21,27 +20,37 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.wrapContentSize
 import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
-import androidx.glance.text.TextDefaults
+import androidx.glance.text.TextDefaults.defaultTextStyle
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.currand60.wprimebalance.R
+import io.hammerhead.karooext.models.ViewConfig
 
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Composable
 fun MatchView(
+    context: Context,
     inEffort: Boolean,
     value: Int,
+    alignment: ViewConfig.Alignment,
+    textSize: Int,
 ) {
+
     // Determine the background color based on the 'inEffort' boolean
     // This color will be applied to the entire Row (the "box").
     val backgroundColor = if (inEffort) Color.Red else Color.Transparent
-    val context = LocalContext.current
+
+    val alignment: TextAlign = when (alignment) {
+        ViewConfig.Alignment.CENTER -> TextAlign.Center
+        ViewConfig.Alignment.LEFT -> TextAlign.Start
+        ViewConfig.Alignment.RIGHT -> TextAlign.End
+    }
 
     Box(
         modifier = GlanceModifier.fillMaxSize().cornerRadius(8.dp)
@@ -67,30 +76,29 @@ fun MatchView(
             Text(
                 text = context.getString(R.string.match_datatype).uppercase(),
                 style = TextStyle(
-                    color = TextDefaults.defaultTextColor,
-                    fontSize = TextUnit(18f, TextUnitType.Sp),
-                ),
+                    color = ColorProvider(R.color.text_color),
+                    fontSize = TextUnit(16f, TextUnitType.Sp),
+                    textAlign = alignment,
+                    fontFamily = FontFamily.SansSerif
+                )
             )
         }
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
                 .padding(top = 21.dp, bottom = 2.dp),
-//                .wrapContentSize(),
             verticalAlignment = Alignment.Bottom,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Text for the dynamic integer value
             Text(
-//                text = value.toString(),
-                text = "42",
+                text = value.toString(),
                 style = TextStyle(
-                    color = TextDefaults.defaultTextColor, // White text color for contrast
-                    fontSize = TextUnit(56f, TextUnitType.Sp), // Font size for the label
-                    textAlign = TextAlign.Center,
-                    fontFamily = FontFamily.Monospace,
+                    color = ColorProvider(R.color.text_color),
+                    fontSize = TextUnit(textSize.toFloat(), TextUnitType.Sp),
+                    textAlign = alignment,
+                    fontFamily = FontFamily.SansSerif
                 ),
-
                 modifier = GlanceModifier
                     .padding(start = 4.dp, end = 4.dp)
             )
@@ -102,19 +110,19 @@ fun MatchView(
 @Preview(widthDp = 200, heightDp = 150) // Dark background for contrast
 @Composable
 fun EffortIndicatorPreviewInEffort() {
-    MatchView(inEffort = true, value = 75)
+    MatchView(LocalContext.current, inEffort = true, value = 75, alignment = ViewConfig.Alignment.CENTER, textSize = 54)
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150) // Dark background for contrast
 @Composable
 fun EffortIndicatorPreviewNormal() {
-    MatchView(inEffort = false, value = 42)
+    MatchView(LocalContext.current, inEffort = false, value = 42, alignment = ViewConfig.Alignment.RIGHT, textSize = 54)
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview(widthDp = 200, heightDp = 150) // Dark background for contrast
 @Composable
 fun EffortIndicatorPreviewLongValue() {
-    MatchView(inEffort = true, value = 12345)
+    MatchView(LocalContext.current, inEffort = true, value = 42, alignment = ViewConfig.Alignment.LEFT, textSize = 54)
 }
