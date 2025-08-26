@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.lang.Thread.sleep
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 class MatchDataType(
@@ -45,20 +46,20 @@ class MatchDataType(
             )
             wPrimeFlow
                 .map { streamState ->
-                when (streamState) {
-                    is StreamState.Streaming -> {
-                        val matches = calculator.getMatches()
-                        StreamState.Streaming(
-                            DataPoint(
-                                dataTypeId,
-                                values = mapOf(DataType.Field.SINGLE to matches.toDouble()),
-                            ),
-                        )
-                    } else -> {
+                    when (streamState) {
+                        is StreamState.Streaming -> {
+                            val matches = calculator.getMatches()
+                            StreamState.Streaming(
+                                DataPoint(
+                                    dataTypeId,
+                                    values = mapOf(DataType.Field.SINGLE to matches.toDouble()),
+                                ),
+                            )
+                        } else -> {
                         streamState
                     }
-                }
-            }.collect { emitter.onNext(it) }
+                    }
+                }.collect { emitter.onNext(it) }
         }
         emitter.setCancellable {
             job.cancel()
@@ -66,28 +67,35 @@ class MatchDataType(
     }
 
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+
         val configJob = dataScope.launch {
             emitter.onNext(
                 UpdateGraphicConfig(showHeader = false)
             )
         }
         val viewJob = dataScope.launch {
-            karooSystem.streamDataFlow(
-                DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
-            ).collect {
-                val matches = when(config.preview) {
-                    false -> calculator.getMatches()
-                    // random number between 0 and 100
-                    true -> (0..100).random()
+            when (config.preview) {
+                true -> {
+                    repeat(Int.MAX_VALUE) {
+                        val matches = (0..100).random()
+                        val inEffort = System.currentTimeMillis() % 5 == 0L
+                        sleep((2000..3000).random().toLong())
+                        val result = glance.compose(context, DpSize.Unspecified) {
+                            MatchView(context, inEffort, matches, config.alignment, config.textSize)
+                        }
+                        emitter.updateView(result.remoteViews)
                 }
-                val inEffort = when(config.preview) {
-                    false -> calculator.getInEffortBlock()
-                    true -> System.currentTimeMillis() % 2500 == 0L
+                    }
+                false -> karooSystem.streamDataFlow(
+                    DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
+                ).collect {
+                    val matches = calculator.getMatches()
+                    val inEffort = calculator.getInEffortBlock()
+                    val result = glance.compose(context, DpSize.Unspecified) {
+                        MatchView(context, inEffort, matches, config.alignment, config.textSize)
+                    }
+                    emitter.updateView(result.remoteViews)
                 }
-                val result = glance.compose(context, DpSize.Unspecified) {
-                    MatchView(context, inEffort, matches, config.alignment, config.textSize)
-                }
-                emitter.updateView(result.remoteViews)
             }
         }
         emitter.setCancellable {
