@@ -15,7 +15,7 @@ android {
         minSdk = 23
         targetSdk = 34
         versionCode = 1
-        versionName = "0.1.3"
+        versionName = "0.2.1"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -83,6 +83,7 @@ java {
 }
 
 dependencies {
+    implementation(libs.androidx.glance.material3)
     implementation(libs.hammerhead.karoo.ext)
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.androidx.lifeycle)
