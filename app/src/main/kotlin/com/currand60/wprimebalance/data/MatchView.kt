@@ -57,11 +57,11 @@ fun MatchView(
     ) {
         Row(
             modifier = GlanceModifier
-                .height(19.dp)
+                .height(20.dp)
                 .background(backgroundColor)
                 .fillMaxWidth(),
 
-            horizontalAlignment = Alignment.CenterHorizontally // Vertically center content
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 provider = ImageProvider(
@@ -84,12 +84,12 @@ fun MatchView(
         Row(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(top=4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .background(backgroundColor),
+            verticalAlignment = Alignment.Bottom,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Text for the dynamic integer value
             Text(
+                modifier = GlanceModifier.fillMaxWidth(),
                 text = value.toString(),
                 style = TextStyle(
                     color = ColorProvider(R.color.text_color),
