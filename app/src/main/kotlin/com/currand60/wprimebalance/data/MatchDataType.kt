@@ -84,8 +84,8 @@ class MatchDataType(
                             MatchView(context, inEffort, matches, config.alignment, config.textSize)
                         }
                         emitter.updateView(result.remoteViews)
-                }
                     }
+                }
                 false -> karooSystem.streamDataFlow(
                     DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
                 ).collect {
