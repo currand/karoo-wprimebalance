@@ -2,12 +2,14 @@ package com.currand60.wprimebalance.extensions
 
 import com.currand60.wprimebalance.BuildConfig
 import com.currand60.wprimebalance.KarooSystemServiceProvider
+import com.currand60.wprimebalance.data.LastMatchDuration
+import com.currand60.wprimebalance.data.LastMatchJoules
+import com.currand60.wprimebalance.data.MatchDataType
 import com.currand60.wprimebalance.data.WPrimeBalanceDataType
 import com.currand60.wprimebalance.data.WPrimeBalancePercentDataType
 import com.currand60.wprimebalance.data.WPrimeBalanceTimeToExhaustDataType
 import com.currand60.wprimebalance.data.WPrimeCalculator
 import com.currand60.wprimebalance.data.WPrimeDataSource
-import com.currand60.wprimebalance.data.MatchDataType
 import io.hammerhead.karooext.extension.KarooExtension
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.Device
@@ -41,7 +43,9 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", BuildConfig.VERSI
             WPrimeBalanceDataType(karooSystem, extension, wPrimeCalculator),
             WPrimeBalancePercentDataType(karooSystem, extension, wPrimeCalculator),
             WPrimeBalanceTimeToExhaustDataType(karooSystem, extension, wPrimeCalculator),
-            MatchDataType(karooSystem, extension, wPrimeCalculator)
+            MatchDataType(karooSystem, extension, wPrimeCalculator),
+            LastMatchJoules(karooSystem, extension, wPrimeCalculator),
+            LastMatchDuration(karooSystem, extension, wPrimeCalculator)
         )
     }
 

@@ -34,7 +34,6 @@ class WPrimeBalanceTimeToExhaustDataType(
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun startStream(emitter: Emitter<StreamState>) {
-//        val dataTypeId = DataType.dataTypeId(extension, TYPE_ID)
         val job = dataScope.launch {
             karooSystem.streamDataFlow(DataType.Type.SMOOTHED_10S_AVERAGE_POWER)
                 .map { data ->

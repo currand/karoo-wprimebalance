@@ -104,5 +104,4 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.junit.jupiter)
 }

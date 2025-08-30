@@ -1,22 +1,21 @@
 package com.currand60.wprimebalance.data
 
-import android.content.Context
-import androidx.compose.ui.unit.DpSize
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
-import androidx.glance.appwidget.GlanceRemoteViews
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
-import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.StreamState
-import io.hammerhead.karooext.models.UpdateGraphicConfig
-import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -37,27 +36,50 @@ class LastMatchJoules(
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    private fun previewFlow(constantValue: Double? = null): Flow<StreamState> = flow {
+        while (true) {
+            val value = constantValue ?: (((0..100).random() * 10).toDouble() / 10.0)
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to value),
+                    extension
+                )
+            ))
+            delay(1000)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private fun makeFlow(value: Double): Flow<StreamState> = flow {
+        while (true) {
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to value),
+                    extension
+                )
+            ))
+            delay(1000)
+        }
+    }.flowOn(Dispatchers.IO)
+    
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {
-            val wPrimeFlow = karooSystem.streamDataFlow(
-                DataType.dataTypeId(extension, WPrimeBalanceDataType.TYPE_ID)
-            )
-            wPrimeFlow
+            makeFlow(calculator.getLastMatchJoulesDepleted().toDouble())
                 .map { streamState ->
-                when (streamState) {
-                    is StreamState.Streaming -> {
-                        val lastMatchJoules = calculator.getLastMatchJoulesDepleted()
+                    if (streamState is StreamState.Streaming) {
                         StreamState.Streaming(
                             DataPoint(
                                 dataTypeId,
-                                values = mapOf(DataType.Field.SINGLE to lastMatchJoules.toDouble()),
+                                values = mapOf(DataType.Field.SINGLE to streamState.dataPoint.singleValue!!),
                             ),
                         )
-                    } else -> {
+                    } else {
                         streamState
                     }
                 }
-            }.collect { emitter.onNext(it) }
+                .onEach { Timber.d("LastMatchJoules: $it") }
+                .collect { emitter.onNext(it) }
         }
         emitter.setCancellable {
             job.cancel()
