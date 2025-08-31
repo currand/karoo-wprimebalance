@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -39,10 +40,11 @@ class LastMatchDuration(
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var previewMode: Boolean = false
 
     private fun previewFlow(constantValue: Double? = null): Flow<StreamState> = flow {
         while (true) {
-            val value = constantValue ?: (((0..100).random() * 10).toDouble() / 10.0)
+            val value = constantValue ?: (((10000..100000).random() * 10).toDouble() / 10.0)
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -54,8 +56,9 @@ class LastMatchDuration(
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun makeFlow(value: Double): Flow<StreamState> = flow {
+    private fun makeFlow(): Flow<StreamState> = flow {
         while (true) {
+            val value = calculator.getLastMatchDepletionDuration().toDouble()
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -68,28 +71,32 @@ class LastMatchDuration(
     }.flowOn(Dispatchers.IO)
 
     override fun startStream(emitter: Emitter<StreamState>) {
-            val job = dataScope.launch {
-                makeFlow(calculator.getLastMatchDepletionDuration().toDouble())
-                    .map { streamState ->
-                        if (streamState is StreamState.Streaming) {
-                            StreamState.Streaming(
-                                DataPoint(
-                                    dataTypeId,
-                                    values = mapOf(DataType.Field.SINGLE to streamState.dataPoint.singleValue!!),
-                                ),
-                            )
-                        } else {
-                            streamState
-                        }
-                    }
-                    .onEach { Timber.d("Last Match Duration: $it") }
-                    .collect { emitter.onNext(it) }
+        val job = dataScope.launch {
+            val dataFlow = if (!previewMode) makeFlow() else previewFlow()
+            dataFlow.map { streamState ->
+                if (streamState is StreamState.Streaming) {
+                    StreamState.Streaming(
+                        DataPoint(
+                            dataTypeId,
+                            values = mapOf(DataType.Field.SINGLE to streamState.dataPoint.singleValue!!),
+                        ),
+                    )
+                } else {
+                    streamState
+                }
             }
-            emitter.setCancellable {
-                job.cancel()
-            }
+                .distinctUntilChanged()
+                .onEach {
+                    Timber.d("Last Match Duration: $it")
+                }
+                .collect { emitter.onNext(it) }
+        }
+        emitter.setCancellable {
+            job.cancel()
+        }
     }
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+        previewMode = config.preview
         emitter.onNext(UpdateNumericConfig(formatDataTypeId = DataType.Type.ELAPSED_TIME))
     }
 }

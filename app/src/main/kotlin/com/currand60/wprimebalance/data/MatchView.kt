@@ -51,6 +51,8 @@ fun MatchView(
         ViewConfig.Alignment.RIGHT -> TextAlign.End
     }
 
+    val textColor = if (inEffort) R.color.white else R.color.text_color
+
     Column(
         modifier = GlanceModifier.fillMaxSize().cornerRadius(8.dp)
     ) {
@@ -73,7 +75,7 @@ fun MatchView(
             Text(
                 text = context.getString(R.string.match_datatype).uppercase(),
                 style = TextStyle(
-                    color = ColorProvider(R.color.text_color),
+                    color = ColorProvider(textColor),
                     fontSize = TextUnit(16f, TextUnitType.Sp),
                     textAlign = alignment,
                     fontFamily = FontFamily.SansSerif
@@ -91,7 +93,7 @@ fun MatchView(
                 modifier = GlanceModifier.fillMaxWidth(),
                 text = value.toString(),
                 style = TextStyle(
-                    color = ColorProvider(R.color.text_color),
+                    color = ColorProvider(textColor),
                     fontSize = TextUnit(textSize.toFloat(), TextUnitType.Sp),
                     textAlign = alignment,
                     fontFamily = FontFamily.Monospace,
