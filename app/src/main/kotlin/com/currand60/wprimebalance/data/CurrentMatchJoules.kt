@@ -1,15 +1,11 @@
 package com.currand60.wprimebalance.data
 
-import android.content.Context
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
-import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.StreamState
-import io.hammerhead.karooext.models.UpdateNumericConfig
-import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,24 +20,24 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-class LastMatchDuration(
+class CurrentMatchJoules(
     extension: String,
     private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
 
     init {
-        Timber.d("LastMatchJDuration created")
+        Timber.d("CurrentMatchJoules created")
     }
 
     companion object {
-        const val TYPE_ID = "lastmatchduration"
+        const val TYPE_ID = "currentmatchjoules"
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private fun makeFlow(): Flow<StreamState> = flow {
         while (true) {
-            val value = calculator.getLastMatchDepletionDuration().toDouble()
+            val value = calculator.getCurrentMatchJoulesDepleted().toDouble()
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -52,33 +48,28 @@ class LastMatchDuration(
             delay(1000)
         }
     }.flowOn(Dispatchers.IO)
-
+    
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {
             makeFlow()
-            .map { streamState ->
-                if (streamState is StreamState.Streaming) {
-                    StreamState.Streaming(
-                        DataPoint(
-                            dataTypeId,
-                            values = mapOf(DataType.Field.SINGLE to streamState.dataPoint.singleValue!!),
-                        ),
-                    )
-                } else {
-                    streamState
+                .map { streamState ->
+                    if (streamState is StreamState.Streaming) {
+                        StreamState.Streaming(
+                            DataPoint(
+                                dataTypeId,
+                                values = mapOf(DataType.Field.SINGLE to streamState.dataPoint.singleValue!!),
+                            ),
+                        )
+                    } else {
+                        streamState
+                    }
                 }
-            }
                 .distinctUntilChanged()
-                .onEach {
-                    Timber.d("Last Match Duration: $it")
-                }
+                .onEach { Timber.d("CurrentMatchJoules: $it") }
                 .collect { emitter.onNext(it) }
         }
         emitter.setCancellable {
             job.cancel()
         }
-    }
-    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        emitter.onNext(UpdateNumericConfig(formatDataTypeId = DataType.Type.ELAPSED_TIME))
     }
 }

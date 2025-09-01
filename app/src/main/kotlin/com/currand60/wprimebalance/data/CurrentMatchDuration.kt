@@ -24,24 +24,24 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-class LastMatchDuration(
+class CurrentMatchDuration(
     extension: String,
     private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
 
     init {
-        Timber.d("LastMatchJDuration created")
+        Timber.d("CurrentMatchJDuration created")
     }
 
     companion object {
-        const val TYPE_ID = "lastmatchduration"
+        const val TYPE_ID = "currentmatchduration"
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private fun makeFlow(): Flow<StreamState> = flow {
         while (true) {
-            val value = calculator.getLastMatchDepletionDuration().toDouble()
+            val value = calculator.getCurrentMatchDepletionDuration().toDouble()
             emit(StreamState.Streaming(
                 DataPoint(
                     dataTypeId,
@@ -70,7 +70,7 @@ class LastMatchDuration(
             }
                 .distinctUntilChanged()
                 .onEach {
-                    Timber.d("Last Match Duration: $it")
+                    Timber.d("Current Match Duration: $it")
                 }
                 .collect { emitter.onNext(it) }
         }

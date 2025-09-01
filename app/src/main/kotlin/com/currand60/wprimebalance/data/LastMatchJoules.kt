@@ -1,7 +1,6 @@
 package com.currand60.wprimebalance.data
 
 import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
-import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
 import io.hammerhead.karooext.models.DataPoint
@@ -22,7 +21,6 @@ import timber.log.Timber
 
 @OptIn(ExperimentalGlanceRemoteViewsApi::class)
 class LastMatchJoules(
-    private val karooSystem: KarooSystemServiceProvider,
     extension: String,
     private val calculator: WPrimeCalculator
 ) : DataTypeImpl(extension, TYPE_ID) {
@@ -36,20 +34,6 @@ class LastMatchJoules(
     }
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private fun previewFlow(constantValue: Double? = null): Flow<StreamState> = flow {
-        while (true) {
-            val value = constantValue ?: (((0..100).random() * 10).toDouble() / 10.0)
-            emit(StreamState.Streaming(
-                DataPoint(
-                    dataTypeId,
-                    mapOf(DataType.Field.SINGLE to value),
-                    extension
-                )
-            ))
-            delay(1000)
-        }
-    }.flowOn(Dispatchers.IO)
 
     private fun makeFlow(): Flow<StreamState> = flow {
         while (true) {

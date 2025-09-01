@@ -40,5 +40,16 @@
         displayName="@string/lastmatchduration_datatype"
         graphical="false"
         icon="@drawable/fire_24px" />
-    <DataType... />
+    <DataType
+        typeId="currentmatchjoules"
+        description="@string/currentmatchjoules_description"
+        displayName="@string/currentmatchjoules_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
+    <DataType
+        typeId="currentmatchduration"
+        description="@string/currentmatchduration_description"
+        displayName="@string/currentmatchduration_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
 </ExtensionInfo>
