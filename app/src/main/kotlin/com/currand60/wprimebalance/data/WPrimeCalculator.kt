@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.round
 
 /**
 Reproduced from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
@@ -20,8 +21,7 @@ Your mileage may vary, not available in all 50 states, prices higher in HI and A
  */
 
 private const val CP_TEST_DURATION_S = 1200.0
-private const val MIN_MATCH_JOULE_DROP = 2000L // Minimum drop to qualify as a match
-private const val RECOVERY_MARGIN_MS = 15_000L // 15 seconds
+private const val RECOVERY_MARGIN_MS = 15_000L // Minimum recovery time to start a new effort block
 private const val EFFORT_POWER_THRESHOLD_PERCENT_CP = 1.05 // 105% of CP to initiate effort block
 
 class WPrimeCalculator(
@@ -59,6 +59,8 @@ class WPrimeCalculator(
 
     // Match calculation related variables
     private var totalMatches: Int = 0
+    private var minMatchJouleDrop = 2000L
+    private var minMatchDuration = 30000L
     private var lastMatchDepletionDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
     private var lastMatchJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
     private var isInEffortBlock: Boolean = false
@@ -86,6 +88,8 @@ class WPrimeCalculator(
         cP60 = config.criticalPower
         wPrimeUsr = config.wPrime
         useEstimatedCp = config.calculateCp
+        minMatchJouleDrop = config.matchJoulePercent / 100L * wPrimeUsr
+        minMatchDuration = config.minMatchDuration * 1000L
 
         // Ensure values are rational if we are calculating them
         if (useEstimatedCp) {
@@ -299,7 +303,10 @@ class WPrimeCalculator(
                     // Effort block has ended due to sufficient recovery
                     val currentBlockDepletion = wPrimeStartOfCurrentBlock - wPrimeBalance
 
-                    if (currentBlockDepletion >= MIN_MATCH_JOULE_DROP) {
+                    // Check if the current effort block qualifies as a match
+                    if (currentBlockDepletion >= minMatchJouleDrop &&
+                        currentTimeMillis - effortBlockStartTimeMillis >= minMatchDuration)
+                    {
                         totalMatches++
                         lastMatchJoulesDepleted = currentBlockDepletion
                         lastMatchDepletionDuration = currentTimeMillis - effortBlockStartTimeMillis
@@ -340,6 +347,14 @@ class WPrimeCalculator(
 
     fun getMatches(): Int {
         return totalMatches
+    }
+
+    fun getCurrentMatchJoulesDepleted(): Long {
+        return if (isInEffortBlock) wPrimeStartOfCurrentBlock - wPrimeBalance else 0L
+    }
+
+    fun getCurrentMatchDepletionDuration(): Long {
+        return if (isInEffortBlock) System.currentTimeMillis() - effortBlockStartTimeMillis else 0L
     }
 
     fun getLastMatchJoulesDepleted(): Long {

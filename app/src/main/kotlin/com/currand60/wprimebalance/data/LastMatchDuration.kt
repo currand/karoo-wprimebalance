@@ -72,8 +72,8 @@ class LastMatchDuration(
 
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {
-            val dataFlow = if (!previewMode) makeFlow() else previewFlow()
-            dataFlow.map { streamState ->
+            makeFlow()
+            .map { streamState ->
                 if (streamState is StreamState.Streaming) {
                     StreamState.Streaming(
                         DataPoint(
@@ -96,7 +96,6 @@ class LastMatchDuration(
         }
     }
     override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
-        previewMode = config.preview
         emitter.onNext(UpdateNumericConfig(formatDataTypeId = DataType.Type.ELAPSED_TIME))
     }
 }
