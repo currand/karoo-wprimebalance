@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="text_color">#FFFFFF</color>
-    <color name="white">#FFFFFF</color>
+    <color name="text_color_max">#FFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="dark_green">#02B583</color>
+    <color name="light_green">#61EDB5</color>
+    <color name="middle">#92A9B4</color>
+    <color name="yellow">#FFF50D</color>
+    <color name="orange">#FA591A</color>
+    <color name="dark_red">#D60303</color>
+    <color name="max">#B406A2</color>
 </resources>

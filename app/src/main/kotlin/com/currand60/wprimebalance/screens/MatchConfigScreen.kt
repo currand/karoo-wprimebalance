@@ -40,7 +40,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.R
 import com.currand60.wprimebalance.data.ConfigData
 import com.currand60.wprimebalance.managers.ConfigurationManager
@@ -53,16 +52,17 @@ import timber.log.Timber
 fun MatchConfigScreen() {
 
     val context = LocalContext.current
-    val karooSystem = koinInject<KarooSystemServiceProvider>()
     val configManager: ConfigurationManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
 
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var minMatchDuration by remember { mutableStateOf("") }
     var matchJoulePercent by remember { mutableStateOf("") }
+    var matchPowerPercent by remember { mutableStateOf("") }
 
     var minMatchDurationError by remember { mutableStateOf(false) }
     var matchJoulePercentError by remember { mutableStateOf(false) }
+    var matchPowerPercentError by remember { mutableStateOf(false) }
 
     Timber.d("MainScreen created/recomposed.")
 
@@ -75,10 +75,11 @@ fun MatchConfigScreen() {
     LaunchedEffect(loadedConfig) {
         // Timber.d("Configuration or Karoo FTP change detected. loadedConfig: $loadedConfig, karooFtp: $karooFtp") // Conditional log
 
-        var newConfig = loadedConfig.copy() // Create a mutable copy to update
+        val newConfig = loadedConfig.copy() // Create a mutable copy to update
 
         minMatchDuration = newConfig.minMatchDuration.toString()
         matchJoulePercent = newConfig.matchJoulePercent.toString()
+        matchPowerPercent = newConfig.matchPowerPercent.toString()
 
         // Only update currentConfig once after all derivations
         currentConfig = newConfig
@@ -165,13 +166,44 @@ fun MatchConfigScreen() {
                     }
                 },
             )
+            Text("Minimum Power", Modifier.padding(start = 5.dp))
+            OutlinedTextField(
+                value = matchPowerPercent, // Bound to the string input state
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 5.dp, end = 5.dp),
+                onValueChange = { newValue ->
+                    Timber.d("Percent input changed: $newValue")
+                    matchPowerPercent = newValue // Always update the string state
+                    val parsedValue = newValue.toLongOrNull()
+                    if (parsedValue != null && parsedValue in (100L..200L)) {
+                        currentConfig = currentConfig.copy(matchPowerPercent = parsedValue)
+                        matchJoulePercentError = false
+                        Timber.d("Percent parsed successfully: $parsedValue, currentConfig: $currentConfig")
+                    } else {
+                        matchPowerPercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (0L..100L))
+                        Timber.w("Invalid Percent input: '$newValue'. Error status: $matchPowerPercentError")
+                    }
+                },
+                placeholder = { Text("${currentConfig.matchPowerPercent}") },
+                suffix = { Text("%") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                isError = matchPowerPercentError,
+                supportingText = {
+                    if (matchPowerPercentError) {
+                        Text("Please enter a valid integer")
+                    }
+                },
+            )
             Box (modifier = Modifier
                 .fillMaxWidth()
                 .padding(5.dp)
             ) {
                 Text("A 'match' is defined as a high rate of drop in W' Balance over time." +
-                        " Enter in the minimum duration you want to consider a match (up to 3600s) and the " +
-                        "amount of W' balance drop to count as a match (as a percentage of total)."
+                        " Enter in the minimum duration you want to consider a match (up to 3600s), the " +
+                        "amount of W' balance drop to count as a match (as a percentage of total), and " +
+                    "the minimum power to needed to trigger an effort (as a percentage of CP60/FTP)"
                 )
             }
             // Save Button

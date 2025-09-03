@@ -43,7 +43,7 @@ fun MatchView(
 ) {
 
     // Light red
-    val backgroundColor = if (inEffort) Color(red=249, green=41, blue=43) else Color.Transparent
+    val backgroundColor = if (inEffort) Color(context.getColor(R.color.dark_red)) else Color.Transparent
 
     val alignment: TextAlign = when (alignment) {
         ViewConfig.Alignment.CENTER -> TextAlign.Center

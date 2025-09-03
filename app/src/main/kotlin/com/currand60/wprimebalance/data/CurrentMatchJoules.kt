@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -35,6 +34,20 @@ class CurrentMatchJoules(
 
     private val dataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    private fun previewFlow(constantValue: Double? = null): Flow<StreamState> = flow {
+        while (true) {
+            val value = constantValue ?: (0..5000).random().toDouble()
+            emit(StreamState.Streaming(
+                DataPoint(
+                    dataTypeId,
+                    mapOf(DataType.Field.SINGLE to value),
+                    extension
+                )
+            ))
+            delay(1000)
+        }
+    }.flowOn(Dispatchers.IO)
+
     private fun makeFlow(): Flow<StreamState> = flow {
         while (true) {
             val value = calculator.getCurrentMatchJoulesDepleted().toDouble()
@@ -51,8 +64,8 @@ class CurrentMatchJoules(
     
     override fun startStream(emitter: Emitter<StreamState>) {
         val job = dataScope.launch {
-            makeFlow()
-                .map { streamState ->
+                makeFlow()
+                    .map { streamState ->
                     if (streamState is StreamState.Streaming) {
                         StreamState.Streaming(
                             DataPoint(
@@ -64,7 +77,6 @@ class CurrentMatchJoules(
                         streamState
                     }
                 }
-                .distinctUntilChanged()
                 .onEach { Timber.d("CurrentMatchJoules: $it") }
                 .collect { emitter.onNext(it) }
         }

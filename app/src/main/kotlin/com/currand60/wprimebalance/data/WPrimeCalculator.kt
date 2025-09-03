@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.exp
 import kotlin.math.max
-import kotlin.math.round
 
 /**
 Reproduced from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
@@ -22,7 +21,6 @@ Your mileage may vary, not available in all 50 states, prices higher in HI and A
 
 private const val CP_TEST_DURATION_S = 1200.0
 private const val RECOVERY_MARGIN_MS = 15_000L // Minimum recovery time to start a new effort block
-private const val EFFORT_POWER_THRESHOLD_PERCENT_CP = 1.05 // 105% of CP to initiate effort block
 
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
@@ -59,13 +57,17 @@ class WPrimeCalculator(
 
     // Match calculation related variables
     private var totalMatches: Int = 0
-    private var minMatchJouleDrop = 2000L
-    private var minMatchDuration = 30000L
-    private var lastMatchDepletionDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
-    private var lastMatchJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
+    private var currentEffortJoulesDepleted: Long = 0L
+    private var currentEffortDuration: Long = 0L
+    private var effortBlockEndTimeMillis = 0L // The true ending of a block without recovery time
+    private var minEffortJouleDrop = 2000.0
+    private var minEffortDuration = 30000L
+    private var matchPowerPercent = 1.05
+    private var lastEffortDuration: Long = 0L // Duration of the effort block when the last match was triggered (ms)
+    private var lastEffortJoulesDepleted: Long = 0L // Total Joules depleted in the *last full effort* that qualified as a match
     private var isInEffortBlock: Boolean = false
     private var wPrimeStartOfCurrentBlock: Long = 0L // W' balance at the start of the current effort block
-    private var effortBlockStartTimeMillis: Long = 0L // Timestamp when the current effort block started
+    private var currentEffortStartTimeMillis: Long = 0L // Timestamp when the current effort block started
     private var timeBelowCPLimit: Long = 0L // Accumulates time (ms) spent below CP for recovery margin
 
 
@@ -88,8 +90,9 @@ class WPrimeCalculator(
         cP60 = config.criticalPower
         wPrimeUsr = config.wPrime
         useEstimatedCp = config.calculateCp
-        minMatchJouleDrop = config.matchJoulePercent / 100L * wPrimeUsr
-        minMatchDuration = config.minMatchDuration * 1000L
+        minEffortJouleDrop = config.matchJoulePercent / 100.0 * wPrimeUsr
+        minEffortDuration = config.minMatchDuration * 1000L
+        matchPowerPercent = config.matchPowerPercent / 100.0
 
         // Ensure values are rational if we are calculating them
         if (useEstimatedCp) {
@@ -126,11 +129,14 @@ class WPrimeCalculator(
 
         // Reset match calculation variables
         totalMatches = 0
-        lastMatchDepletionDuration = 0L
-        lastMatchJoulesDepleted = 0L
+        lastEffortDuration = 0L
+        lastEffortJoulesDepleted = 0L
+        currentEffortJoulesDepleted = 0L
+        currentEffortDuration = 0L
+        effortBlockEndTimeMillis = 0L
         isInEffortBlock = false
         wPrimeStartOfCurrentBlock = 0L
-        effortBlockStartTimeMillis = 0L
+        currentEffortStartTimeMillis = 0L
         timeBelowCPLimit = 0L
 
 
@@ -274,56 +280,42 @@ class WPrimeCalculator(
         return wPrimeBalance
     }
 
-    /**
-     * Calculates and updates the number of "matches" based on W' balance depletion.
-     * A match is defined by a single effort resulting in a >= MIN_MATCH_JOULE_DROP.
-     * An effort is defined by an "effort block" which is considered continuous
-     * if recovery (power below CP) is less than RECOVERY_MARGIN_MS.
-     */
     private fun calculateMatches(instantaneousPower: Int, currentTimeMillis: Long) {
-        val sampleTimeMillis = currentTimeMillis - prevReadingTime
+        val sampleTime = (currentTimeMillis - prevReadingTime)
+        val minEffortPower = currentCp60 * matchPowerPercent
 
-        val thresholdPowerForEffort = (currentCp60 * EFFORT_POWER_THRESHOLD_PERCENT_CP).toInt()
+        if (!isInEffortBlock && (instantaneousPower > minEffortPower)) {
 
-        // State 1: Not in an effort block
-        if (!isInEffortBlock) {
-            // Condition to start a new effort block: Power above threshold
-            if (instantaneousPower >= thresholdPowerForEffort) {
-                isInEffortBlock = true
-                wPrimeStartOfCurrentBlock = wPrimeBalance // Set baseline for this block
-                effortBlockStartTimeMillis = currentTimeMillis
-                timeBelowCPLimit = 0L // Reset recovery timer
-            }
+            isInEffortBlock = true
+            currentEffortStartTimeMillis = currentTimeMillis - 1000L
+            wPrimeStartOfCurrentBlock = wPrimeBalance
+            timeBelowCPLimit = 0L
+            currentEffortDuration = 1000L // 1s has already occurred when we receive the sample
+
+
         } else {
-            // State 2: In an effort block
-            // Check for effort block end (recovery margin)
-            if (instantaneousPower < currentCp60) { // If power is below CP
-                timeBelowCPLimit += sampleTimeMillis
-                if (timeBelowCPLimit >= RECOVERY_MARGIN_MS) {
-                    // Effort block has ended due to sufficient recovery
-                    val currentBlockDepletion = wPrimeStartOfCurrentBlock - wPrimeBalance
+            if (isInEffortBlock &&
+                (instantaneousPower <= currentCp60) &&
+                (currentEffortDuration >= minEffortDuration))
+            {
+                timeBelowCPLimit += sampleTime
 
-                    // Check if the current effort block qualifies as a match
-                    if (currentBlockDepletion >= minMatchJouleDrop &&
-                        currentTimeMillis - effortBlockStartTimeMillis >= minMatchDuration)
-                    {
-                        totalMatches++
-                        lastMatchJoulesDepleted = currentBlockDepletion
-                        lastMatchDepletionDuration = currentTimeMillis - effortBlockStartTimeMillis
-                    }
+                if (timeBelowCPLimit >= RECOVERY_MARGIN_MS &&
+                    currentEffortJoulesDepleted >= minEffortJouleDrop) {
 
-                    // Reset block variables regardless of whether a match was counted
+                    totalMatches++
+                    lastEffortDuration = currentEffortDuration
+                    lastEffortJoulesDepleted = currentEffortJoulesDepleted
                     isInEffortBlock = false
-                    wPrimeStartOfCurrentBlock = 0L // Clear baseline
-                    effortBlockStartTimeMillis = 0L
-                    timeBelowCPLimit = 0L // Reset recovery timer
                 }
-            } else {
-                // If power is back above CP, reset recovery timer
+            } else if (isInEffortBlock) {
+                currentEffortDuration += sampleTime + timeBelowCPLimit
+                currentEffortJoulesDepleted = wPrimeStartOfCurrentBlock - wPrimeBalance
                 timeBelowCPLimit = 0L
             }
         }
     }
+
 
     fun getWPrimeBalance(): Long {
         return wPrimeBalance
@@ -350,23 +342,23 @@ class WPrimeCalculator(
     }
 
     fun getCurrentMatchJoulesDepleted(): Long {
-        return if (isInEffortBlock) wPrimeStartOfCurrentBlock - wPrimeBalance else 0L
+        return if (isInEffortBlock && (currentEffortDuration >= minEffortDuration)) currentEffortJoulesDepleted else 0L
     }
 
     fun getCurrentMatchDepletionDuration(): Long {
-        return if (isInEffortBlock) System.currentTimeMillis() - effortBlockStartTimeMillis else 0L
+        return if (isInEffortBlock && (currentEffortDuration >= minEffortDuration)) currentEffortDuration else 0L
     }
 
     fun getLastMatchJoulesDepleted(): Long {
-        return lastMatchJoulesDepleted
+        return lastEffortJoulesDepleted
     }
 
     fun getLastMatchDepletionDuration(): Long {
-        return lastMatchDepletionDuration
+        return lastEffortDuration
     }
 
     fun getInEffortBlock(): Boolean {
-        return isInEffortBlock
+        return isInEffortBlock && (currentEffortDuration >= minEffortDuration)
     }
 
     fun calculateTimeToExhaust(avgPower: Int): Int {

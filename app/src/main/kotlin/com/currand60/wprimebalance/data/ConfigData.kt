@@ -10,6 +10,7 @@ data class ConfigData(
     val useKarooFtp: Boolean = true, // Use the Karoo FTP for calculations
     val matchJoulePercent: Long = 10, // Default to 10% of W' to count as an effort
     val minMatchDuration: Long = 30, // Default to 30 seconds
+    val matchPowerPercent: Long = 105, // Default to 105% of CP to count as an effort:
 ) {
     companion object {
         /**
@@ -22,7 +23,8 @@ data class ConfigData(
             calculateCp = false,
             useKarooFtp = true,
             matchJoulePercent = 10,
-            minMatchDuration = 30
+            minMatchDuration = 30,
+            matchPowerPercent = 105
         )
     }
 }
