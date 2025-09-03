@@ -132,7 +132,7 @@ fun MatchConfigScreen() {
                 isError = minMatchDurationError,
                 supportingText = {
                     if (minMatchDurationError) {
-                        Text("Please enter a valid number")
+                        Text("Please enter a valid number (0-3600s)")
                     }
                 },
             )
@@ -146,12 +146,12 @@ fun MatchConfigScreen() {
                     Timber.d("Percent input changed: $newValue")
                     matchJoulePercent = newValue // Always update the string state
                     val parsedValue = newValue.toLongOrNull()
-                    if (parsedValue != null && parsedValue in (0L..100L)) {
+                    if (parsedValue != null && parsedValue in (5L..100L)) {
                         currentConfig = currentConfig.copy(matchJoulePercent = parsedValue)
                         matchJoulePercentError = false
                         Timber.d("Percent parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
-                        matchJoulePercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (0L..100L))
+                        matchJoulePercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (5L..100L))
                         Timber.w("Invalid Percent input: '$newValue'. Error status: $matchJoulePercentError")
                     }
                 },
@@ -162,7 +162,7 @@ fun MatchConfigScreen() {
                 isError = matchJoulePercentError,
                 supportingText = {
                     if (matchJoulePercentError) {
-                        Text("Please enter a valid integer")
+                        Text("Please enter a valid integer (5-100%")
                     }
                 },
             )
@@ -181,7 +181,7 @@ fun MatchConfigScreen() {
                         matchJoulePercentError = false
                         Timber.d("Percent parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
-                        matchPowerPercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (0L..100L))
+                        matchPowerPercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (100L..200L))
                         Timber.w("Invalid Percent input: '$newValue'. Error status: $matchPowerPercentError")
                     }
                 },
@@ -192,7 +192,7 @@ fun MatchConfigScreen() {
                 isError = matchPowerPercentError,
                 supportingText = {
                     if (matchPowerPercentError) {
-                        Text("Please enter a valid integer")
+                        Text("Please enter a valid integer (100-200%)")
                     }
                 },
             )
