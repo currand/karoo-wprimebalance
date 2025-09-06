@@ -472,5 +472,54 @@ class WPrimeCalculatorTest {
                 "Last match Joules depleted should be ~2500 but was ${wPrimeCalculator.getLastMatchJoulesDepleted()}"
             )
         }
+
+        @Test
+        fun `Match not counted if all criteria not met`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(
+                criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                matchPowerPercent = 105
+            )
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 5000),
+                Pair(800, 5000),
+            )
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 0, "Matches should be 1 but is ${wPrimeCalculator.getMatches()}")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Match should be over but is not")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L,
+                "Current match duration should be 0 but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L,
+                "Current match Joules depleted should be 0 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
+            )
+        }
     }
 }

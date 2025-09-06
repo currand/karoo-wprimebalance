@@ -291,6 +291,7 @@ class WPrimeCalculator(
             wPrimeStartOfCurrentBlock = wPrimeBalance
             timeBelowCPLimit = 0L
             currentEffortDuration = 1000L // 1s has already occurred when we receive the sample
+            currentEffortJoulesDepleted = 0L
 
 
         } else {
