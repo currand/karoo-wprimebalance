@@ -208,7 +208,7 @@ fun WPrimeConfigScreen(
                     fieldHasChanges = (newValue != currentConfig.criticalPower.toString())
                     criticalPowerInput = newValue // Always update the string state
                     val parsedValue = newValue.toIntOrNull()
-                    if (parsedValue != null && parsedValue in (100..500)) {
+                    if (parsedValue != null && parsedValue in (100..1000)) {
                         currentConfig = currentConfig.copy(criticalPower = parsedValue)
                         criticalPowerError = false
                         Timber.d("CP parsed successfully: $parsedValue, currentConfig: $currentConfig")
