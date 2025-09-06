@@ -1,6 +1,7 @@
 package com.currand60.wprimebalance.screens
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,11 +20,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,12 +52,19 @@ import timber.log.Timber
 
 @Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
 @Composable
-fun MatchConfigScreen() {
+fun MatchConfigScreen(
+    onUnsavedChangesChange: (Boolean) -> Unit = {}
+) {
 
     val context = LocalContext.current
     val configManager: ConfigurationManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
 
+    var showUnsavedChangesDialogForBack by remember { mutableStateOf(false) }
+    var fieldHasChanges by remember { mutableStateOf(false) }
+
+
+    var originalConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var minMatchDuration by remember { mutableStateOf("") }
     var matchJoulePercent by remember { mutableStateOf("") }
@@ -83,10 +93,30 @@ fun MatchConfigScreen() {
 
         // Only update currentConfig once after all derivations
         currentConfig = newConfig
+        originalConfig = newConfig
+        fieldHasChanges = false
+    }
+
+    // Effect to observe changes in currentConfig and update hasUnsavedChanges
+    LaunchedEffect(currentConfig, originalConfig, fieldHasChanges, matchJoulePercentError, matchPowerPercentError) {
+        // Only consider unsaved changes if there are no input errors
+        val hasChanges = if (!minMatchDurationError && !matchJoulePercentError && !matchPowerPercentError) {
+            currentConfig != originalConfig && fieldHasChanges
+        } else {
+            // If there are validation errors, consider it as having unsaved changes
+            // to prevent accidental discard of potentially valid parts.
+            true
+        }
+        onUnsavedChangesChange(hasChanges)
     }
 
     val scrollState = rememberScrollState()
     val isScrolledToBottom = scrollState.value == scrollState.maxValue
+
+    // Intercept back presses
+    BackHandler(enabled = currentConfig != originalConfig && !minMatchDurationError && !matchJoulePercentError && !matchPowerPercentError) {
+        showUnsavedChangesDialogForBack = true
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -113,15 +143,16 @@ fun MatchConfigScreen() {
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("Duration input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.minMatchDuration.toString())
                     minMatchDuration = newValue // Always update the string state first
-                    val parsedValue = newValue.toLongOrNull()
-                    if (parsedValue != null && parsedValue in (0L..3600L)) {
+                    val parsedValue = newValue.toIntOrNull()
+                    if (parsedValue != null && parsedValue in (0..3600)) {
                         currentConfig = currentConfig.copy(minMatchDuration = parsedValue) // Update numerical state only if valid
                         minMatchDurationError = false
                         Timber.d("Duration parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
                         // If parsing fails, set error, but the UI still shows the (invalid) newValue
-                        minMatchDurationError = (newValue.isNotBlank() && newValue.toLongOrNull() in (0L..3600L))
+                        minMatchDurationError = true
                         Timber.w("Invalid Duration input: '$newValue'. Error status: $minMatchDurationError")
                     }
                 },
@@ -144,14 +175,15 @@ fun MatchConfigScreen() {
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("Percent input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.matchJoulePercent.toString())
                     matchJoulePercent = newValue // Always update the string state
-                    val parsedValue = newValue.toLongOrNull()
-                    if (parsedValue != null && parsedValue in (5L..100L)) {
+                    val parsedValue = newValue.toIntOrNull()
+                    if (parsedValue != null && parsedValue in (5..100)) {
                         currentConfig = currentConfig.copy(matchJoulePercent = parsedValue)
                         matchJoulePercentError = false
                         Timber.d("Percent parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
-                        matchJoulePercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (5L..100L))
+                        matchJoulePercentError = true
                         Timber.w("Invalid Percent input: '$newValue'. Error status: $matchJoulePercentError")
                     }
                 },
@@ -174,14 +206,15 @@ fun MatchConfigScreen() {
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("Percent input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.matchPowerPercent.toString())
                     matchPowerPercent = newValue // Always update the string state
-                    val parsedValue = newValue.toLongOrNull()
-                    if (parsedValue != null && parsedValue in (100L..200L)) {
+                    val parsedValue = newValue.toIntOrNull()
+                    if (parsedValue != null && parsedValue in (100..200)) {
                         currentConfig = currentConfig.copy(matchPowerPercent = parsedValue)
-                        matchJoulePercentError = false
+                        matchPowerPercentError = false
                         Timber.d("Percent parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
-                        matchPowerPercentError = (newValue.isNotBlank() && newValue.toLongOrNull() in (100L..200L))
+                        matchPowerPercentError = true
                         Timber.w("Invalid Percent input: '$newValue'. Error status: $matchPowerPercentError")
                     }
                 },
@@ -203,7 +236,7 @@ fun MatchConfigScreen() {
                 Text("A 'match' is defined as a high rate of drop in W' Balance over time." +
                         " Enter in the minimum duration you want to consider a match (up to 3600s), the " +
                         "amount of W' balance drop to count as a match (as a percentage of total), and " +
-                    "the minimum power to needed to trigger an effort (as a percentage of CP60/FTP)"
+                    "the minimum power needed to trigger an effort (as a percentage of CP60/FTP)"
                 )
             }
             // Save Button
@@ -219,6 +252,9 @@ fun MatchConfigScreen() {
                         coroutineScope.launch {
                             Timber.d("Attempting to save config: $configToSave")
                             configManager.saveConfig(configToSave)
+                            originalConfig = configToSave
+                            onUnsavedChangesChange(false)
+
                             Timber.i("Configuration save initiated.")
                         }
                     } else {
@@ -243,11 +279,47 @@ fun MatchConfigScreen() {
                     .padding(bottom = 10.dp) // Add some padding from the screen edges
                     .size(54.dp) // Set a suitable size for the clickable area and image
                     .clickable {
-                        // Use LocalContext to find the activity and trigger back press
-                        val activity =
-                            context as? ComponentActivity // Or FragmentActivity
-                        activity?.onBackPressedDispatcher?.onBackPressed()
+                        if (currentConfig != originalConfig && !minMatchDurationError && !matchJoulePercentError && !matchPowerPercentError) {
+                            showUnsavedChangesDialogForBack = true
+                        } else {
+                            val activity = context as? ComponentActivity
+                            activity?.onBackPressedDispatcher?.onBackPressed()
+                        }
                     }
+            )
+        }
+        if (showUnsavedChangesDialogForBack) {
+            AlertDialog(
+                onDismissRequest = { showUnsavedChangesDialogForBack = false },
+                title = { Text("Unsaved Changes") },
+                text = { Text("You have unsaved changes. Do you want to discard them?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showUnsavedChangesDialogForBack = false
+                        // Discard changes by resetting currentConfig to originalConfig
+                        currentConfig = originalConfig.copy()
+                        // Re-set input fields to reflect originalConfig values
+                        minMatchDuration = originalConfig.minMatchDuration.toString()
+                        matchJoulePercent = originalConfig.matchJoulePercent.toString()
+                        matchPowerPercent = originalConfig.matchPowerPercent.toString()
+                        // Clear any errors that might have been present
+                        minMatchDurationError = false
+                        matchJoulePercentError = false
+                        matchPowerPercentError = false
+                        onUnsavedChangesChange(false) // Explicitly signal no unsaved changes
+                        val activity = context as? ComponentActivity
+                        activity?.onBackPressedDispatcher?.onBackPressed() // Proceed with back navigation
+                    }) {
+                        Text("Discard")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showUnsavedChangesDialogForBack = false // Stay on the current screen
+                    }) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }

@@ -1,16 +1,13 @@
 package com.currand60.wprimebalance.data
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class ConfigData(
     val wPrime: Int,          // User's W' in Joules
     val criticalPower: Int,    // User's Critical Power in Watts
     val calculateCp: Boolean = false, // Should we calculate CP mid ride?
     val useKarooFtp: Boolean = true, // Use the Karoo FTP for calculations
-    val matchJoulePercent: Long = 10, // Default to 10% of W' to count as an effort
-    val minMatchDuration: Long = 30, // Default to 30 seconds
-    val matchPowerPercent: Long = 105, // Default to 105% of CP to count as an effort:
+    val matchJoulePercent: Int = 10, // Default to 10% of W' to count as an effort
+    val minMatchDuration: Int = 30, // Default to 30 seconds
+    val matchPowerPercent: Int = 105, // Default to 105% of CP to count as an effort:
 ) {
     companion object {
         /**

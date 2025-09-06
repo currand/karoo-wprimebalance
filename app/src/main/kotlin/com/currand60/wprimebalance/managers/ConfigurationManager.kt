@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.currand60.wprimebalance.data.ConfigData
 import kotlinx.coroutines.flow.Flow
@@ -27,9 +26,9 @@ class ConfigurationManager(
         private val CRITICAL_POWER_KEY = intPreferencesKey("critical_power")
         private val CALCULATE_CP_KEY = booleanPreferencesKey("calculateCp")
         private val USE_KAROO_FTP_KEY = booleanPreferencesKey("useKarooFtp")
-        private val MATCH_JOULE_PERCENT_KEY = longPreferencesKey("matchJoulePercent")
-        private val MIN_MATCH_DURATION_KEY = longPreferencesKey("minMatchDuration")
-        private val MATCH_POWER_PERCENT_KEY = longPreferencesKey("matchPowerPercent")
+        private val MATCH_JOULE_PERCENT_KEY = intPreferencesKey("matchJoulePercent")
+        private val MIN_MATCH_DURATION_KEY = intPreferencesKey("minMatchDuration")
+        private val MATCH_POWER_PERCENT_KEY = intPreferencesKey("matchPowerPercent")
 
     }
 

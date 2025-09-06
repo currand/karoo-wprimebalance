@@ -284,32 +284,40 @@ class WPrimeCalculator(
         val sampleTime = (currentTimeMillis - prevReadingTime)
         val minEffortPower = currentCp60 * matchPowerPercent
 
-        if (!isInEffortBlock && (instantaneousPower > minEffortPower)) {
-
-            isInEffortBlock = true
-            currentEffortStartTimeMillis = currentTimeMillis - 1000L
-            wPrimeStartOfCurrentBlock = wPrimeBalance
-            timeBelowCPLimit = 0L
-            currentEffortDuration = 1000L // 1s has already occurred when we receive the sample
-            currentEffortJoulesDepleted = 0L
-
-
+        if (!isInEffortBlock) {
+            if (instantaneousPower > minEffortPower) {
+                // Start a new block if power is high enough
+                isInEffortBlock = true
+                currentEffortStartTimeMillis = currentTimeMillis - sampleTime
+                wPrimeStartOfCurrentBlock = wPrimeBalance
+                currentEffortDuration = sampleTime // 1s has already occurred when we receive the sample
+                currentEffortJoulesDepleted = 0L
+                timeBelowCPLimit = 0L
+            }
         } else {
-            if (isInEffortBlock &&
-                (instantaneousPower <= currentCp60) &&
-                (currentEffortDuration >= minEffortDuration))
-            {
+            // We're already in an effort
+            if (instantaneousPower <= currentCp60) {
+                // Power drops below CP, accumulate time below CP and check for recovery margin
                 timeBelowCPLimit += sampleTime
 
-                if (timeBelowCPLimit >= RECOVERY_MARGIN_MS &&
-                    currentEffortJoulesDepleted >= minEffortJouleDrop) {
+                if (timeBelowCPLimit >= RECOVERY_MARGIN_MS) {
+                    if (currentEffortDuration >= minEffortDuration ||
+                        currentEffortJoulesDepleted >= minEffortJouleDrop) {
+                        // If RECOVERY_MARGIN_MS has elapsed and the match is qualified,
+                        // record the match details
 
-                    totalMatches++
-                    lastEffortDuration = currentEffortDuration
-                    lastEffortJoulesDepleted = currentEffortJoulesDepleted
+                        totalMatches++
+                        lastEffortDuration = currentEffortDuration
+                        lastEffortJoulesDepleted = currentEffortJoulesDepleted
+                    }
+                    // RECOVERY_MARGIN_MS has elapsed, reset the effort block
                     isInEffortBlock = false
+                    timeBelowCPLimit = 0L
+                    currentEffortJoulesDepleted = 0L
+                    currentEffortDuration = 0L
                 }
-            } else if (isInEffortBlock) {
+            } else {
+                // Power is above CP, accumulate Joules and duration
                 currentEffortDuration += sampleTime + timeBelowCPLimit
                 currentEffortJoulesDepleted = wPrimeStartOfCurrentBlock - wPrimeBalance
                 timeBelowCPLimit = 0L

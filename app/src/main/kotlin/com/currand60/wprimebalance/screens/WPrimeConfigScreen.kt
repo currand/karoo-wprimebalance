@@ -1,6 +1,7 @@
 package com.currand60.wprimebalance.screens
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,12 +21,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,13 +56,19 @@ import timber.log.Timber
 
 @Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
 @Composable
-fun WPrimeConfigScreen() {
+fun WPrimeConfigScreen(
+    onUnsavedChangesChange: (Boolean) -> Unit = {}
+) {
 
     val context = LocalContext.current
     val karooSystem = koinInject<KarooSystemServiceProvider>()
     val configManager: ConfigurationManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
 
+    var showUnsavedChangesDialogForBack by remember { mutableStateOf(false) }
+    var fieldHasChanges by remember { mutableStateOf(false) }
+
+    var originalConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var wPrimeInput by remember { mutableStateOf("") }
     var criticalPowerInput by remember { mutableStateOf("") }
@@ -110,11 +119,32 @@ fun WPrimeConfigScreen() {
 
         // Only update currentConfig once after all derivations
         currentConfig = newConfig
+        originalConfig = newConfig
+        onUnsavedChangesChange(false)
+        fieldHasChanges = false
         // Timber.d("currentConfig and input fields updated: $currentConfig, CP_Input: $criticalPowerInput") // Conditional log
+    }
+
+    // Effect to observe changes in currentConfig and update hasUnsavedChanges
+    LaunchedEffect(currentConfig, originalConfig, wPrimeError, criticalPowerError, fieldHasChanges) {
+        // Only consider unsaved changes if there are no input errors
+        val hasChanges = if (!wPrimeError && !criticalPowerError) {
+            currentConfig != originalConfig && fieldHasChanges
+        } else {
+            // If there are validation errors, consider it as having unsaved changes
+            // to prevent accidental discard of potentially valid parts.
+            true
+        }
+        onUnsavedChangesChange(hasChanges)
     }
 
     val scrollState = rememberScrollState()
     val isScrolledToBottom = scrollState.value == scrollState.maxValue
+
+    // Intercept back presses
+    BackHandler(enabled = currentConfig != originalConfig && !wPrimeError && !criticalPowerError ) {
+        showUnsavedChangesDialogForBack = true
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -141,15 +171,16 @@ fun WPrimeConfigScreen() {
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("W' input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.wPrime.toString())
                     wPrimeInput = newValue // Always update the string state first
                     val parsedValue = newValue.toIntOrNull()
-                    if (parsedValue != null) {
+                    if (parsedValue != null && parsedValue in (1000..50000)) {
                         currentConfig = currentConfig.copy(wPrime = parsedValue) // Update numerical state only if valid
                         wPrimeError = false
                         Timber.d("W' parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
                         // If parsing fails, set error, but the UI still shows the (invalid) newValue
-                        wPrimeError = newValue.isNotBlank()
+                        wPrimeError = true
                         Timber.w("Invalid W' input: '$newValue'. Error status: $wPrimeError")
                     }
                 },
@@ -160,7 +191,7 @@ fun WPrimeConfigScreen() {
                 isError = wPrimeError,
                 supportingText = {
                     if (wPrimeError) {
-                        Text("Please enter a valid number")
+                        Text("Please enter a valid number between 1000 and 50000")
                     }
                 },
                 enabled = !currentConfig.calculateCp
@@ -174,14 +205,15 @@ fun WPrimeConfigScreen() {
                     .padding(start = 5.dp, end = 5.dp),
                 onValueChange = { newValue ->
                     Timber.d("CP input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.criticalPower.toString())
                     criticalPowerInput = newValue // Always update the string state
                     val parsedValue = newValue.toIntOrNull()
-                    if (parsedValue != null) {
+                    if (parsedValue != null && parsedValue in (100..500)) {
                         currentConfig = currentConfig.copy(criticalPower = parsedValue)
                         criticalPowerError = false
                         Timber.d("CP parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
-                        criticalPowerError = newValue.isNotBlank()
+                        criticalPowerError = true
                         Timber.w("Invalid CP input: '$newValue'. Error status: $criticalPowerError")
                     }
                 },
@@ -199,7 +231,7 @@ fun WPrimeConfigScreen() {
                 isError = criticalPowerError,
                 supportingText = {
                     if (criticalPowerError) {
-                        Text("Please enter a valid integer")
+                        Text("Please enter a valid integer between 100 and 500")
                     } else if (currentConfig.useKarooFtp && karooFtp <= 0) {
                         Text("Karoo FTP is 0 or not set. Enter CP manually.")
                     }
@@ -217,6 +249,7 @@ fun WPrimeConfigScreen() {
                     checked = currentConfig.calculateCp,
                     onCheckedChange = {
                         currentConfig = currentConfig.copy(calculateCp = !currentConfig.calculateCp)
+                        fieldHasChanges = (originalConfig.calculateCp != currentConfig.calculateCp)
                         Timber.d("CP calculation toggle: ${currentConfig.calculateCp}")
                     }
                 )
@@ -235,6 +268,8 @@ fun WPrimeConfigScreen() {
                     onCheckedChange = { isChecked ->
                         Timber.d("Karoo FTP toggle changed: $isChecked")
                         currentConfig = currentConfig.copy(useKarooFtp = isChecked)
+                        fieldHasChanges = (originalConfig.useKarooFtp != currentConfig.useKarooFtp)
+
                     }
                 )
                 Text(
@@ -271,6 +306,7 @@ fun WPrimeConfigScreen() {
                         coroutineScope.launch {
                             Timber.d("Attempting to save config: $configToSave")
                             configManager.saveConfig(configToSave)
+                            fieldHasChanges = false
                             Timber.i("Configuration save initiated.")
                         }
                     } else {
@@ -295,13 +331,48 @@ fun WPrimeConfigScreen() {
                     .padding(bottom = 10.dp) // Add some padding from the screen edges
                     .size(54.dp) // Set a suitable size for the clickable area and image
                     .clickable {
-                        // Use LocalContext to find the activity and trigger back press
-                        val activity =
-                            context as? ComponentActivity // Or FragmentActivity
-                        activity?.onBackPressedDispatcher?.onBackPressed()
+                        if (currentConfig != originalConfig && !criticalPowerError && !wPrimeError) {
+                            showUnsavedChangesDialogForBack = true
+                        } else {
+                            val activity = context as? ComponentActivity
+                            activity?.onBackPressedDispatcher?.onBackPressed()
+                        }
                     }
             )
         }
+        if (showUnsavedChangesDialogForBack) {
+            AlertDialog(
+                onDismissRequest = { showUnsavedChangesDialogForBack = false },
+                title = { Text("Unsaved Changes") },
+                text = { Text("You have unsaved changes. Do you want to discard them?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showUnsavedChangesDialogForBack = false
+                        currentConfig = originalConfig.copy()
+                        // Re-set input fields to reflect originalConfig values
+                        wPrimeInput = originalConfig.wPrime.toString()
+                        criticalPowerInput = originalConfig.criticalPower.toString()
+                        // Clear any errors that might have been present
+                        wPrimeError = false
+                        criticalPowerError = false
+                        onUnsavedChangesChange(false) // Explicitly signal no unsaved changes
+                        fieldHasChanges = false
+                        val activity = context as? ComponentActivity
+                        activity?.onBackPressedDispatcher?.onBackPressed() // Proceed with back navigation
+                    }) {
+                        Text("Discard")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showUnsavedChangesDialogForBack = false // Stay on the current screen
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
     }
 }
 
