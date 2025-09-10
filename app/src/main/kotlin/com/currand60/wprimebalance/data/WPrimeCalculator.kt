@@ -276,7 +276,6 @@ class WPrimeCalculator(
             currentCp60 = eCP
             currentWPrimeUsr = ewPrimeMod
         }
-
         return wPrimeBalance
     }
 
@@ -301,7 +300,7 @@ class WPrimeCalculator(
                 timeBelowCPLimit += sampleTime
 
                 if (timeBelowCPLimit >= RECOVERY_MARGIN_MS) {
-                    if (currentEffortDuration >= minEffortDuration ||
+                    if (currentEffortDuration >= minEffortDuration &&
                         currentEffortJoulesDepleted >= minEffortJouleDrop) {
                         // If RECOVERY_MARGIN_MS has elapsed and the match is qualified,
                         // record the match details
