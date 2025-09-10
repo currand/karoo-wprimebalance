@@ -14,8 +14,8 @@ android {
         applicationId = "com.currand60.wprimebalance"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.3"
+        versionCode = 25091001
+        versionName = "0.2.2"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -83,6 +83,7 @@ java {
 }
 
 dependencies {
+    implementation(libs.androidx.glance.material3)
     implementation(libs.hammerhead.karoo.ext)
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.androidx.lifeycle)
@@ -102,6 +103,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
-    testImplementation(libs.junit.jupiter)
     testImplementation(libs.junit.jupiter)
 }

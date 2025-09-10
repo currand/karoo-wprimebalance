@@ -3,6 +3,13 @@
 A Hammerhead Karoo extension to display the W' Balance (sometimes referred to as Functional Reserve Capacity).
 The formula and basis of the code for calculation comes from [RT-Critical-Power](https://github.com/Berg0162/RT-Critical-Power).
 
+## Features
+- Display W' Balance in Joules
+- Display available W' Balance as a percentage available
+- Display time to exhaustion of W' Balance based on 10s average power
+- Display "matches" burned. A match is defined as an effort over FTP/CP60 that consumes at least 2000J
+- Display duration of the last effort
+- Display Joules burned in the last effort
 
 ## Requirements
 - Karoo (tested on last Karoo ) with version 1.527 or later

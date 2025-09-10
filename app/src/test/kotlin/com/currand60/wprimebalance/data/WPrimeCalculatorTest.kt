@@ -78,13 +78,82 @@ class WPrimeCalculatorTest {
 
             // Then
             val expectedWPrimeBalance = initialConfig.wPrime.toLong()
-            assertEquals(expectedWPrimeBalance, wPrimeCalculator.wPrimeBalance, "wPrimeBalance should be less than 1000J")
+            assertEquals(expectedWPrimeBalance, wPrimeCalculator.getWPrimeBalance(), "wPrimeBalance should be less than 1000J")
         }
     }
 
     @Nested
     @DisplayName("W' Balance Calculation Tests")
     inner class WPrimeBalanceCalculationTests {
+
+        @Test
+        @DisplayName("wPrimeBalance matches values from https://medium.com/critical-powers/comparison-of-wbalance-algorithms-8838173e2c15")
+        fun `wPrimeBalance matches expected values`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val originalCp = 350
+            val originalWPrime = 20000
+            val initialTimestamp = System.currentTimeMillis()
+            // The website says FTP of 300 but the plot was based on FTP of 350
+            val initialConfig = ConfigData(criticalPower = originalCp, wPrime = originalWPrime, calculateCp = false)
+            configFlow.value = initialConfig
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 10 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 4 * 60 * 1000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(400, 60000),
+                Pair(100, 60000),
+                Pair(100, 10 * 60 * 1000),
+
+            )
+
+            var lowestWPrime = wPrimeCalculator.getOriginalWPrimeCapacity()
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+                if (wPrimeCalculator.getWPrimeBalance().toInt() < lowestWPrime) {
+                    lowestWPrime = wPrimeCalculator.getWPrimeBalance().toInt()
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getWPrimeBalance() in 18500..18750, "wPrimeBalance should be ~18.6kJ. Actual: ${wPrimeCalculator.getWPrimeBalance()}")
+            assertTrue(lowestWPrime in 11250..11500, "Lowest value should be ~11.3kJ. Actual: $lowestWPrime")
+            assertTrue(wPrimeCalculator.getOriginalCP() == wPrimeCalculator.getCurrentCP(), "Original CP should be $originalCp. Actual: ${wPrimeCalculator.getOriginalCP()}")
+            assertTrue(wPrimeCalculator.getOriginalWPrimeCapacity() == wPrimeCalculator.getCurrentWPrimeJoules(), "Current W' should be $originalWPrime. Actual: ${wPrimeCalculator.getCurrentWPrimeJoules()}")
+        }
 
         @Test
         @DisplayName("wPrimeBalance is calculated correctly")
@@ -111,15 +180,15 @@ class WPrimeCalculatorTest {
                 val durationMs = step.second
 
 
-                for (elapsedTime in stepLength until durationMs step stepLength) {
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
-                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
             }
-            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
+            assertTrue(wPrimeCalculator.getWPrimeBalance() < 1000, "wPrimeBalance should be less than 1000J")
         }
 
         @Test
@@ -142,14 +211,14 @@ class WPrimeCalculatorTest {
                 val power = step.first
                 val durationMs = step.second
 
-                for (elapsedTime in stepLength until durationMs step stepLength) {
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     val currentTime = initialTimestamp + elapsedTime
                     wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, CP60: ${wPrimeCalculator.CP60}, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+//                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
                 }
             }
-            assertTrue(wPrimeCalculator.wPrimeBalance < 1000, "wPrimeBalance should be less than 1000J")
+            assertTrue(wPrimeCalculator.getWPrimeBalance() < 1000, "wPrimeBalance should be less than 1000J")
         }
 
     }
@@ -172,7 +241,7 @@ class WPrimeCalculatorTest {
             val power = step.first
             val durationMs = step.second
 
-            for (elapsedTime in stepLength until durationMs step stepLength) {
+            for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                 val currentTime = initialTimestamp + elapsedTime
                 wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
                 testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
@@ -210,8 +279,325 @@ class WPrimeCalculatorTest {
         // fun `eCP updates when wPrimeBalance depletes significantly and useEstimatedCp is true`() = runTest(testDispatcher) { ... }
     }
 
-    // --- Helper Methods (Optional) ---
-    // private fun createDefaultConfig(): ConfigData {
-    //     return ConfigData(criticalPower = 250, wPrime = 20000, calculateCp = false)
-    // }
+    @Nested
+    @DisplayName("Match tests")
+    inner class MatchTests {
+
+        @Test
+        fun `Matches are calculated correctly`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30)
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 5000),
+                Pair(450, 30000),
+                Pair(100, 20000),
+                Pair(450, 30000),
+                Pair(100, 5000),
+                Pair(450, 30000),
+                Pair(100, 20000),
+                )
+
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 2, "Matches should be 1 but is ${wPrimeCalculator.getMatches()}")
+        }
+
+        @Test
+        fun `Current match getters are accurate`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30)
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 5000),
+                Pair(450, 30000),
+            )
+
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 0, "Matches should be 0 (it hasn't ended) but is ${wPrimeCalculator.getMatches()}")
+            assertTrue(wPrimeCalculator.getInEffortBlock(), "Current in effort should be true")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 30000L,
+                "Match duration should be 30s but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() in (2500..3000),
+                "Match Joules depleted should be ~2500 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
+            )
+        }
+
+        @Test
+        fun `Current match getters don't work until minMatchDurationTime`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30)
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 5000),
+                Pair(450, 29000),
+            )
+
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 0, "Matches should be 0 but is ${wPrimeCalculator.getMatches()}")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Current in effort should be false")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L,
+                "Match duration should be 0s but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L,
+                "Match Joules depleted should be 0 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
+            )
+        }
+
+        @Test
+        fun `Last match getters are accurate`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30)
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 5000),
+                Pair(450, 30000),
+                Pair(100, 16000),
+            )
+
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 1, "Matches should be 1 but is ${wPrimeCalculator.getMatches()}")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Match should be over but is not")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L,
+                "Current match duration should be 0 but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L,
+                "Current match Joules depleted should be 0 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
+            )
+            assertTrue(wPrimeCalculator.getLastMatchDepletionDuration() == 30000L,
+                "Last match duration should be 30s but was ${wPrimeCalculator.getLastMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getLastMatchJoulesDepleted() in (2500..3000),
+                "Last match Joules depleted should be ~2500 but was ${wPrimeCalculator.getLastMatchJoulesDepleted()}"
+            )
+        }
+
+        @Test
+        fun `Match not counted if all criteria not met`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(
+                criticalPower = 350,
+                wPrime = 22300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                matchPowerPercent = 105
+            )
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            val testSteps = listOf(
+                Pair(100, 900),
+                Pair(800, 5000),
+                Pair(100, 900),
+                )
+
+            for (step in testSteps) {
+                val power = step.first
+                val durationMs = step.second
+
+                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
+                    currentTime += stepLength
+                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
+//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
+                }
+//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
+            }
+            assertTrue(wPrimeCalculator.getMatches() == 0, "Matches should be 1 but is ${wPrimeCalculator.getMatches()}")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Match should be over but is not")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L,
+                "Current match duration should be 0 but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
+            )
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L,
+                "Current match Joules depleted should be 0 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
+            )
+        }
+        @Test
+        @DisplayName("Effort is discarded if recovery time passes but duration/joules not met")
+        fun `Short duration but high Joules is a match`() = runTest(testDispatcher) {
+            // Given
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+
+            // Set configuration for the test
+            val criticalPower = 300 // CP60
+            val wPrimeCapacity = 20000 // W'
+            val minMatchDurationSeconds = 30 // 30 seconds
+            val matchJoulePercent = 10 // 10% W' depletion (20000 * 0.10 = 2000J)
+            val matchPowerPercent = 105 // minEffortPower = 300 * 1.05 = 315W
+
+            val initialConfig = ConfigData(
+                criticalPower = criticalPower,
+                wPrime = wPrimeCapacity,
+                calculateCp = false,
+                minMatchDuration = minMatchDurationSeconds,
+                matchJoulePercent = matchJoulePercent,
+                matchPowerPercent = matchPowerPercent
+            )
+
+            configFlow.value = initialConfig // Emit new config
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            var currentTime = initialTimestamp
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+
+            // Step 1: Power burst above minEffortPower to start an effort block
+            // 1200W is > 315W (minEffortPower)
+            // Duration: 10 seconds (10000ms) - this is < 30000ms (MIN_EFFORT_DURATION_MS)
+            // Joules depleted: 2000J (burstPower * burstDuration) = ~8800J
+            val burstPower = 1200
+            val burstDuration = 10000L // 2 seconds
+
+            for (elapsedTime in stepLength until burstDuration + stepLength step stepLength) {
+                currentTime += stepLength
+                wPrimeCalculator.calculateWPrimeBalance(burstPower, currentTime)
+                testDispatcher.scheduler.advanceUntilIdle()
+            }
+
+            // Assert that we are in an effort block after the burst
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Will not display an effort block after initial burst")
+            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L, "Current match duration will show zero")
+            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L, "Current match joules will be zero")
+
+
+            // Step 2: Drop power below CP60 for sufficient recovery time
+            // 100W is < 300W (CP60)
+            // Duration: 6 seconds (6000ms) - this is > 5000ms (RECOVERY_MARGIN_MS)
+            val recoveryPower = 100
+            val recoveryDuration = 16000L // 6 seconds
+
+            for (elapsedTime in stepLength until recoveryDuration + stepLength step stepLength) {
+                currentTime += stepLength
+                wPrimeCalculator.calculateWPrimeBalance(recoveryPower, currentTime)
+                testDispatcher.scheduler.advanceUntilIdle()
+            }
+
+            // Then
+            // After recovery, the effort should have been evaluated:
+            // currentEffortDuration (10000ms) < MIN_EFFORT_DURATION_MS (30000ms)
+            // wPrimeDepleted (approx 8800J) > MIN_EFFORT_JOULE_DROP (2000J)
+            // Since RECOVERY_MARGIN_MS (15000ms) was exceeded, but criteria were NOT met,
+            // the state machine should have discarded this effort.
+            assertEquals(0, wPrimeCalculator.getMatches(), "No matches should be counted as criteria were not met")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Should no longer be in an effort block (it was discarded)")
+            assertEquals(0L, wPrimeCalculator.getCurrentMatchDepletionDuration(), "Current match duration should be reset to 0")
+            assertEquals(0L, wPrimeCalculator.getCurrentMatchJoulesDepleted(), "Current match joules depleted should be reset to 0")
+        }
+
+    }
 }

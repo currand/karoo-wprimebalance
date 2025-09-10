@@ -22,5 +22,34 @@
         displayName="@string/exhaust_datatype"
         graphical="false"
         icon="@drawable/icon_gauge" />
-    <DataType... />
+    <DataType
+        typeId="matches"
+        description="@string/match_description"
+        displayName="@string/match_datatype"
+        graphical="true"
+        icon="@drawable/fire_24px" />
+    <DataType
+        typeId="lastmatchjoules"
+        description="@string/lastmatchjoules_description"
+        displayName="@string/lastmatchjoules_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
+    <DataType
+        typeId="lastmatchduration"
+        description="@string/lastmatchduration_description"
+        displayName="@string/lastmatchduration_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
+    <DataType
+        typeId="currentmatchjoules"
+        description="@string/currentmatchjoules_description"
+        displayName="@string/currentmatchjoules_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
+    <DataType
+        typeId="currentmatchduration"
+        description="@string/currentmatchduration_description"
+        displayName="@string/currentmatchduration_datatype"
+        graphical="false"
+        icon="@drawable/fire_24px" />
 </ExtensionInfo>

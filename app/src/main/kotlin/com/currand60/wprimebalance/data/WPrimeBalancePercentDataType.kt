@@ -1,11 +1,15 @@
 package com.currand60.wprimebalance.data
 
+import android.content.Context
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import io.hammerhead.karooext.extension.DataTypeImpl
 import io.hammerhead.karooext.internal.Emitter
+import io.hammerhead.karooext.internal.ViewEmitter
 import io.hammerhead.karooext.models.DataPoint
 import io.hammerhead.karooext.models.DataType
 import io.hammerhead.karooext.models.StreamState
+import io.hammerhead.karooext.models.UpdateNumericConfig
+import io.hammerhead.karooext.models.ViewConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,5 +64,8 @@ class WPrimeBalancePercentDataType(
         emitter.setCancellable {
             job.cancel()
         }
+    }
+    override fun startView(context: Context, config: ViewConfig, emitter: ViewEmitter) {
+        emitter.onNext(UpdateNumericConfig(formatDataTypeId = DataType.Type.BATTERY_PERCENT))
     }
 }
