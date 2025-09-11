@@ -33,7 +33,7 @@
         </service>
         <meta-data
             android:name="io.hammerhead.karooext.MANIFEST_URL"
-            android:resource="https://github.com/currand/karoo-wprimebalance/releases/latest/download/manifest.json" />
+            android:value="https://github.com/currand/karoo-wprimebalance/releases/latest/download/manifest.json" />
     </application>
 
 </manifest>
