@@ -34,6 +34,11 @@ develocity {
         publishing.onlyIf { false }
     }
 }
+
+val env: MutableMap<String, String> = System.getenv()
+val gprUser = if(env.containsKey("GPR_USER")) env["GPR_USER"] else getLocalProperty("gpr.user")
+val gprKey = if(env.containsKey("GPR_KEY")) env["GPR_KEY"] else getLocalProperty("gpr.key")
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -43,8 +48,8 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://maven.pkg.github.com/hammerheadnav/karoo-ext")
             credentials {
-                username = getLocalProperty("gpr.user")
-                password = getLocalProperty("gpr.key")
+                username = gprUser
+                password = gprKey
             }
         }
     }
