@@ -14,7 +14,7 @@ android {
         applicationId = "com.currand60.wprimebalance"
         minSdk = 23
         targetSdk = 34
-        versionCode = 25091101
+        versionCode = 25091102
         versionName = "0.2.2"
         signingConfig = signingConfigs.getByName("debug")
     }
