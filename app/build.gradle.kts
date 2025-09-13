@@ -14,8 +14,8 @@ android {
         applicationId = "com.currand60.wprimebalance"
         minSdk = 23
         targetSdk = 34
-        versionCode = 25091102
-        versionName = "0.2.2"
+        versionCode = 25091301
+        versionName = "0.2.3"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -30,11 +30,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = "1.8"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
