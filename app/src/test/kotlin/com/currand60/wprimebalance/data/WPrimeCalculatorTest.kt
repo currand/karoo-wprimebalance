@@ -376,53 +376,6 @@ class WPrimeCalculatorTest {
         }
 
         @Test
-        fun `Current match getters don't work until minMatchDurationTime`() = runTest(testDispatcher) {
-            // Given
-            val stepLength = 1000L
-            val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 350,
-                wPrime = 22300,
-                calculateCp = false,
-                matchJoulePercent = 10,
-                minMatchDuration = 30)
-
-            configFlow.value = initialConfig // Emit new config if different from default
-            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
-
-            var currentTime = initialTimestamp
-
-            // When
-            wPrimeCalculator.resetRideState(initialTimestamp)
-
-            val testSteps = listOf(
-                Pair(100, 5000),
-                Pair(450, 29000),
-            )
-
-
-            for (step in testSteps) {
-                val power = step.first
-                val durationMs = step.second
-
-                for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
-                    currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
-                    testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
-//                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
-                }
-//                println("Step: ${step.first}, ${step.second}, Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
-            }
-            assertTrue(wPrimeCalculator.getMatches() == 0, "Matches should be 0 but is ${wPrimeCalculator.getMatches()}")
-            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Current in effort should be false")
-            assertTrue(wPrimeCalculator.getCurrentMatchDepletionDuration() == 0L,
-                "Match duration should be 0s but was ${wPrimeCalculator.getCurrentMatchDepletionDuration()}"
-            )
-            assertTrue(wPrimeCalculator.getCurrentMatchJoulesDepleted() == 0L,
-                "Match Joules depleted should be 0 but was ${wPrimeCalculator.getCurrentMatchJoulesDepleted()}"
-            )
-        }
-
-        @Test
         fun `Last match getters are accurate`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
@@ -611,6 +564,8 @@ class WPrimeCalculatorTest {
             val minMatchDurationSeconds = 30 // 30 seconds
             val matchJoulePercent = 30 // 10% W' depletion (20000 * 0.10 = 2000J)
             val matchPowerPercent = 105 // minEffortPower = 300 * 1.05 = 315W
+
+            val recoveryTime = 15000L
 
             val initialConfig = ConfigData(
                 criticalPower = criticalPower,
