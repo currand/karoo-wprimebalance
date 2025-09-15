@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ "master" ]
-    tags: [ "*" ]
+    tags: [ "*[0-9]-release" ]
   pull_request:
     branches: [ "master" ]
 
