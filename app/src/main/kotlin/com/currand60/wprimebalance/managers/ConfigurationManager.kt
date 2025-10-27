@@ -24,8 +24,10 @@ class ConfigurationManager(
     companion object {
         private val W_PRIME_KEY = intPreferencesKey("w_prime")
         private val CRITICAL_POWER_KEY = intPreferencesKey("critical_power")
+        private val MAX_POWER_KEY = intPreferencesKey("max_power")
         private val CALCULATE_CP_KEY = booleanPreferencesKey("calculateCp")
         private val USE_KAROO_FTP_KEY = booleanPreferencesKey("useKarooFtp")
+        private val USE_THREE_PARAM_MODEL_KEY = booleanPreferencesKey("useThreeParamModel")
         private val MATCH_JOULE_PERCENT_KEY = intPreferencesKey("matchJoulePercent")
         private val MIN_MATCH_DURATION_KEY = intPreferencesKey("minMatchDuration")
         private val MATCH_POWER_PERCENT_KEY = intPreferencesKey("matchPowerPercent")
@@ -37,8 +39,10 @@ class ConfigurationManager(
         context.dataStore.edit { preferences ->
             preferences[W_PRIME_KEY] = config.wPrime
             preferences[CRITICAL_POWER_KEY] = config.criticalPower
+            preferences[MAX_POWER_KEY] = config.maxPower
             preferences[CALCULATE_CP_KEY] = config.calculateCp
             preferences[USE_KAROO_FTP_KEY] = config.useKarooFtp
+            preferences[USE_THREE_PARAM_MODEL_KEY] = config.useThreeParamModel
             preferences[MATCH_JOULE_PERCENT_KEY] = config.matchJoulePercent
             preferences[MIN_MATCH_DURATION_KEY] = config.minMatchDuration
             preferences[MATCH_POWER_PERCENT_KEY] = config.matchPowerPercent
@@ -53,8 +57,10 @@ class ConfigurationManager(
             val config = ConfigData(
                 wPrime = preferences[W_PRIME_KEY] ?: ConfigData.DEFAULT.wPrime,
                 criticalPower = preferences[CRITICAL_POWER_KEY] ?: ConfigData.DEFAULT.criticalPower,
+                maxPower = preferences[MAX_POWER_KEY] ?: ConfigData.DEFAULT.maxPower,
                 calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp,
                 useKarooFtp = preferences[USE_KAROO_FTP_KEY] ?: ConfigData.DEFAULT.useKarooFtp,
+                useThreeParamModel = preferences[USE_THREE_PARAM_MODEL_KEY] ?: ConfigData.DEFAULT.useThreeParamModel,
                 matchJoulePercent = preferences[MATCH_JOULE_PERCENT_KEY] ?: ConfigData.DEFAULT.matchJoulePercent,
                 minMatchDuration = preferences[MIN_MATCH_DURATION_KEY] ?: ConfigData.DEFAULT.minMatchDuration,
                 matchPowerPercent = preferences[MATCH_POWER_PERCENT_KEY] ?: ConfigData.DEFAULT.matchPowerPercent
@@ -69,8 +75,10 @@ class ConfigurationManager(
             ConfigData(
                 wPrime = preferences[W_PRIME_KEY] ?: ConfigData.DEFAULT.wPrime, // Use default if null
                 criticalPower = preferences[CRITICAL_POWER_KEY] ?: ConfigData.DEFAULT.criticalPower,
+                maxPower = preferences[MAX_POWER_KEY] ?: ConfigData.DEFAULT.maxPower,
                 calculateCp = preferences[CALCULATE_CP_KEY] ?: ConfigData.DEFAULT.calculateCp,
                 useKarooFtp = preferences[USE_KAROO_FTP_KEY] ?: ConfigData.DEFAULT.useKarooFtp,
+                useThreeParamModel = preferences[USE_THREE_PARAM_MODEL_KEY] ?: ConfigData.DEFAULT.useThreeParamModel,
                 matchJoulePercent = preferences[MATCH_JOULE_PERCENT_KEY] ?: ConfigData.DEFAULT.matchJoulePercent,
                 minMatchDuration = preferences[MIN_MATCH_DURATION_KEY] ?: ConfigData.DEFAULT.minMatchDuration,
                 matchPowerPercent = preferences[MATCH_POWER_PERCENT_KEY] ?: ConfigData.DEFAULT.matchPowerPercent

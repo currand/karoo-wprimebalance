@@ -71,9 +71,11 @@ fun WPrimeConfigScreen(
     var currentConfig by remember { mutableStateOf(ConfigData.DEFAULT) }
     var wPrimeInput by remember { mutableStateOf("") }
     var criticalPowerInput by remember { mutableStateOf("") }
+    var maxPowerInput by remember { mutableStateOf("") }
 
     var wPrimeError by remember { mutableStateOf(false) }
     var criticalPowerError by remember { mutableStateOf(false) }
+    var maxPowerError by remember { mutableStateOf(false) }
 
     Timber.d("MainScreen created/recomposed.")
 
@@ -125,9 +127,9 @@ fun WPrimeConfigScreen(
     }
 
     // Effect to observe changes in currentConfig and update hasUnsavedChanges
-    LaunchedEffect(currentConfig, originalConfig, wPrimeError, criticalPowerError, fieldHasChanges) {
+    LaunchedEffect(currentConfig, originalConfig, wPrimeError, criticalPowerError, maxPowerError, fieldHasChanges) {
         // Only consider unsaved changes if there are no input errors
-        val hasChanges = if (!wPrimeError && !criticalPowerError) {
+        val hasChanges = if (!wPrimeError && !criticalPowerError && !maxPowerError) {
             currentConfig != originalConfig && fieldHasChanges
         } else {
             // If there are validation errors, consider it as having unsaved changes
@@ -141,7 +143,7 @@ fun WPrimeConfigScreen(
     val isScrolledToBottom = scrollState.value == scrollState.maxValue
 
     // Intercept back presses
-    BackHandler(enabled = currentConfig != originalConfig && !wPrimeError && !criticalPowerError ) {
+    BackHandler(enabled = currentConfig != originalConfig && !wPrimeError && !criticalPowerError && !maxPowerError) {
         showUnsavedChangesDialogForBack = true
     }
 
@@ -159,6 +161,61 @@ fun WPrimeConfigScreen(
             Text(text="W' Balance Settings",
                 textAlign = TextAlign.Center
             )
+            Row(
+                modifier = Modifier.padding(start = 5.dp),
+            ) {
+                Switch(
+                    checked = currentConfig.calculateCp,
+                    onCheckedChange = {
+                        currentConfig = currentConfig.copy(calculateCp = !currentConfig.calculateCp)
+                        fieldHasChanges = (originalConfig.calculateCp != currentConfig.calculateCp)
+                        Timber.d("CP calculation toggle: ${currentConfig.calculateCp}")
+                    }
+                )
+                Text(
+                    modifier = Modifier
+                        .padding(start = 5.dp)
+                        .align(Alignment.CenterVertically),
+                    text = "Estimate CP and W' mid-ride",
+                )
+            }
+            Row(
+                modifier = Modifier.padding(start = 5.dp),
+            ) {
+                Switch(
+                    checked = currentConfig.useThreeParamModel,
+                    onCheckedChange = {
+                        currentConfig = currentConfig.copy(useThreeParamModel = !currentConfig.useThreeParamModel)
+                        fieldHasChanges = (originalConfig.useThreeParamModel != currentConfig.useThreeParamModel)
+                        Timber.d("Three Parameter toggle: ${currentConfig.useThreeParamModel}")
+                    }
+                )
+                Text(
+                    modifier = Modifier
+                        .padding(start = 5.dp)
+                        .align(Alignment.CenterVertically),
+                    text = "Use Three Parameter Model",
+                )
+            }
+            Row(
+                modifier = Modifier.padding(start = 5.dp),
+            ) {
+                Switch(
+                    checked = currentConfig.useKarooFtp,
+                    onCheckedChange = { isChecked ->
+                        Timber.d("Karoo FTP toggle changed: $isChecked")
+                        currentConfig = currentConfig.copy(useKarooFtp = isChecked)
+                        fieldHasChanges = (originalConfig.useKarooFtp != currentConfig.useKarooFtp)
+
+                    }
+                )
+                Text(
+                    modifier = Modifier
+                        .padding(start = 5.dp)
+                        .align(Alignment.CenterVertically),
+                    text = "Use the Karoo FTP?",
+                )
+            }
             Spacer(modifier = Modifier.height(4.dp))
 
             // W' (W-prime) input field
@@ -241,43 +298,40 @@ fun WPrimeConfigScreen(
                     true // Enable if not using Karoo FTP at all
                 }
             )
-            Row(
-                modifier = Modifier.padding(start = 5.dp),
-            ) {
-                Switch(
-                    checked = currentConfig.calculateCp,
-                    onCheckedChange = {
-                        currentConfig = currentConfig.copy(calculateCp = !currentConfig.calculateCp)
-                        fieldHasChanges = (originalConfig.calculateCp != currentConfig.calculateCp)
-                        Timber.d("CP calculation toggle: ${currentConfig.calculateCp}")
+            // Max Power input
+            Text("Max Power in Watts", Modifier.padding(start = 5.dp))
+            OutlinedTextField(
+                value = maxPowerInput, // Bound to the string input state
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 5.dp, end = 5.dp),
+                onValueChange = { newValue ->
+                    Timber.d("Max Power input changed: $newValue")
+                    fieldHasChanges = (newValue != currentConfig.maxPower.toString())
+                    maxPowerInput = newValue // Always update the string state first
+                    val parsedValue = newValue.toIntOrNull()
+                    if (parsedValue != null && parsedValue in (500..5000)) {
+                        currentConfig = currentConfig.copy(wPrime = parsedValue) // Update numerical state only if valid
+                        wPrimeError = false
+                        Timber.d("Max Power parsed successfully: $parsedValue, currentConfig: $currentConfig")
+                    } else {
+                        // If parsing fails, set error, but the UI still shows the (invalid) newValue
+                        wPrimeError = true
+                        Timber.w("Invalid input: '$newValue'. Error status: $maxPowerError")
                     }
-                )
-                Text(
-                    modifier = Modifier
-                        .padding(start = 5.dp)
-                        .align(Alignment.CenterVertically),
-                    text = "Estimate CP and W' mid-ride",
-                )
-            }
-            Row(
-                modifier = Modifier.padding(start = 5.dp),
-            ) {
-                Switch(
-                    checked = currentConfig.useKarooFtp,
-                    onCheckedChange = { isChecked ->
-                        Timber.d("Karoo FTP toggle changed: $isChecked")
-                        currentConfig = currentConfig.copy(useKarooFtp = isChecked)
-                        fieldHasChanges = (originalConfig.useKarooFtp != currentConfig.useKarooFtp)
-
+                },
+                placeholder = { Text("${currentConfig.maxPower}") },
+                suffix = { Text("W") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                isError = maxPowerError,
+                supportingText = {
+                    if (wPrimeError) {
+                        Text("Please enter a valid number between 500 and 5000")
                     }
-                )
-                Text(
-                    modifier = Modifier
-                        .padding(start = 5.dp)
-                        .align(Alignment.CenterVertically),
-                    text = "Use the Karoo FTP?",
-                )
-            }
+                },
+                enabled = currentConfig.useThreeParamModel
+            )
             Box (modifier = Modifier
                 .fillMaxWidth()
                 .padding(5.dp)
