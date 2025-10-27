@@ -104,4 +104,5 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     testImplementation(libs.junit.jupiter)
+    implementation(libs.androidx.material.icons.extended)
 }
