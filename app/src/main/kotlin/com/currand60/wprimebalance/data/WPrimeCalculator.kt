@@ -350,11 +350,11 @@ class WPrimeCalculator(
     }
 
     fun getCurrentMatchJoulesDepleted(): Long {
-        return if (isInEffortBlock && (currentEffortDuration >= minEffortDuration)) currentEffortJoulesDepleted else 0L
+        return if (isInEffortBlock && (currentEffortDuration >= RECOVERY_MARGIN_MS)) currentEffortJoulesDepleted else 0L
     }
 
     fun getCurrentMatchDepletionDuration(): Long {
-        return if (isInEffortBlock && (currentEffortDuration >= minEffortDuration)) currentEffortDuration else 0L
+        return if (isInEffortBlock && (currentEffortDuration >= RECOVERY_MARGIN_MS)) currentEffortDuration else 0L
     }
 
     fun getLastMatchJoulesDepleted(): Long {
@@ -366,7 +366,7 @@ class WPrimeCalculator(
     }
 
     fun getInEffortBlock(): Boolean {
-        return isInEffortBlock && (currentEffortDuration >= minEffortDuration)
+        return isInEffortBlock && (currentEffortDuration >= RECOVERY_MARGIN_MS)
     }
 
     fun calculateTimeToExhaust(avgPower: Int): Int {

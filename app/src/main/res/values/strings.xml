@@ -13,8 +13,8 @@
     <string name="lastmatchjoules_description">Joules burned in last effort</string>
     <string name="lastmatchduration_datatype">Last Match Duration</string>
     <string name="lastmatchduration_description">Duration of last effort</string>
-    <string name="currentmatchjoules_datatype">Match Joules</string>
+    <string name="currentmatchjoules_datatype">Effort Joules</string>
     <string name="currentmatchjoules_description">Joules burned in current effort</string>
-    <string name="currentmatchduration_datatype">Match Duration</string>
+    <string name="currentmatchduration_datatype">Effort Duration</string>
     <string name="currentmatchduration_description">Duration of current effort</string>
 </resources>
