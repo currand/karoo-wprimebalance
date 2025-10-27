@@ -54,15 +54,14 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import timber.log.Timber
 
-@Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
 @Composable
 fun WPrimeConfigScreen(
+    configManager: ConfigurationManager = koinInject(),
+    karooSystem: KarooSystemServiceProvider = koinInject(),
     onUnsavedChangesChange: (Boolean) -> Unit = {}
 ) {
 
     val context = LocalContext.current
-    val karooSystem = koinInject<KarooSystemServiceProvider>()
-    val configManager: ConfigurationManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
 
     var showUnsavedChangesDialogForBack by remember { mutableStateOf(false) }
@@ -376,3 +375,12 @@ fun WPrimeConfigScreen(
     }
 }
 
+@Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
+@Composable
+private fun Preview_WPrimeConfig() {
+    val context = LocalContext.current
+    WPrimeConfigScreen(
+        configManager = ConfigurationManager(context),
+        karooSystem = KarooSystemServiceProvider(context)
+    )
+}
