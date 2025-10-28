@@ -40,7 +40,7 @@ class WPrimeCalculatorTest {
         // Initialize mocks
         mockConfigurationManager = mockk()
         configFlow = MutableStateFlow(
-            ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = false) // Default config
+            ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = false, maxPower = 1000) // Default config
         )
         every { mockConfigurationManager.getConfigFlow() } returns configFlow
 
@@ -68,7 +68,7 @@ class WPrimeCalculatorTest {
         fun `wPrimeBalance is initialized correctly after resetRideState`() = runTest(testDispatcher) {
             // Given
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22000, calculateCp = false)
+            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22000, calculateCp = false, maxPower = 1000)
             configFlow.value = initialConfig // Emit new config if different from default
             testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
 
@@ -95,7 +95,7 @@ class WPrimeCalculatorTest {
             val originalWPrime = 20000
             val initialTimestamp = System.currentTimeMillis()
             // The website says FTP of 300 but the plot was based on FTP of 350
-            val initialConfig = ConfigData(criticalPower = originalCp, wPrime = originalWPrime, calculateCp = false)
+            val initialConfig = ConfigData(criticalPower = originalCp, wPrime = originalWPrime, calculateCp = false, maxPower = 1000)
             configFlow.value = initialConfig
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -161,7 +161,7 @@ class WPrimeCalculatorTest {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = false)
+            val initialConfig = ConfigData(criticalPower = 300, wPrime = 22300, calculateCp = false, maxPower = 1000)
             configFlow.value = initialConfig // Emit new config if different from default
             testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
 
@@ -197,7 +197,7 @@ class WPrimeCalculatorTest {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
-            val initialConfig = ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = true)
+            val initialConfig = ConfigData(criticalPower = 200, wPrime = 10000, calculateCp = true, maxPower = 1000)
             configFlow.value = initialConfig // Emit new config if different from default
 
             // When
@@ -228,7 +228,7 @@ class WPrimeCalculatorTest {
     fun `wPrimeBalance time to exhaust is calculated correctly`() = runTest(testDispatcher) {
         val stepLength = 1000L
         val initialTimestamp = System.currentTimeMillis()
-        val initialConfig = ConfigData(criticalPower = 200, wPrime = 12000, calculateCp = false)
+        val initialConfig = ConfigData(criticalPower = 200, wPrime = 12000, calculateCp = false, maxPower = 1000)
         configFlow.value = initialConfig // Emit new config if different from default
 
         // When
@@ -292,7 +292,8 @@ class WPrimeCalculatorTest {
                 wPrime = 22300,
                 calculateCp = false,
                 matchJoulePercent = 10,
-                minMatchDuration = 30)
+                minMatchDuration = 30,
+                maxPower = 1000)
 
             configFlow.value = initialConfig // Emit new config if different from default
             testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
@@ -337,7 +338,8 @@ class WPrimeCalculatorTest {
                 wPrime = 22300,
                 calculateCp = false,
                 matchJoulePercent = 10,
-                minMatchDuration = 30)
+                minMatchDuration = 30,
+                maxPower = 1000)
 
             configFlow.value = initialConfig // Emit new config if different from default
             testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
@@ -384,7 +386,8 @@ class WPrimeCalculatorTest {
                 wPrime = 22300,
                 calculateCp = false,
                 matchJoulePercent = 10,
-                minMatchDuration = 30)
+                minMatchDuration = 30,
+                maxPower = 1000)
 
             configFlow.value = initialConfig // Emit new config if different from default
             testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
@@ -440,7 +443,8 @@ class WPrimeCalculatorTest {
                 calculateCp = false,
                 matchJoulePercent = 10,
                 minMatchDuration = 30,
-                matchPowerPercent = 105
+                matchPowerPercent = 105,
+                maxPower = 1000
             )
 
             configFlow.value = initialConfig // Emit new config if different from default
@@ -498,7 +502,8 @@ class WPrimeCalculatorTest {
                 calculateCp = false,
                 minMatchDuration = minMatchDurationSeconds,
                 matchJoulePercent = matchJoulePercent,
-                matchPowerPercent = matchPowerPercent
+                matchPowerPercent = matchPowerPercent,
+                maxPower = 1000
             )
 
             configFlow.value = initialConfig // Emit new config
@@ -573,7 +578,8 @@ class WPrimeCalculatorTest {
                 calculateCp = false,
                 minMatchDuration = minMatchDurationSeconds,
                 matchJoulePercent = matchJoulePercent,
-                matchPowerPercent = matchPowerPercent
+                matchPowerPercent = matchPowerPercent,
+                maxPower = 1000
             )
 
             configFlow.value = initialConfig // Emit new config

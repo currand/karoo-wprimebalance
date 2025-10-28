@@ -162,7 +162,8 @@ fun WPrimeConfigScreen(
                 textAlign = TextAlign.Center
             )
             Row(
-                modifier = Modifier.padding(start = 5.dp),
+                modifier = Modifier.padding(start = 5.dp, end = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Switch(
                     checked = currentConfig.calculateCp,
@@ -175,12 +176,19 @@ fun WPrimeConfigScreen(
                 Text(
                     modifier = Modifier
                         .padding(start = 5.dp)
-                        .align(Alignment.CenterVertically),
+                        .weight(1f)
+                    ,
                     text = "Estimate CP and W' mid-ride",
+
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                InfoTip(
+                    tipText = "If selected, when W' Available drops below 0, the model will increase W' and use that value for the remainder of the ride",
+                    tipId = "Estimate W' Balance"
                 )
             }
             Row(
-                modifier = Modifier.padding(start = 5.dp),
+                modifier = Modifier.padding(start = 5.dp, end = 5.dp),
             ) {
                 Switch(
                     checked = currentConfig.useThreeParamModel,
@@ -193,12 +201,17 @@ fun WPrimeConfigScreen(
                 Text(
                     modifier = Modifier
                         .padding(start = 5.dp)
-                        .align(Alignment.CenterVertically),
+                        .weight(1f),
                     text = "Use Three Parameter Model",
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                InfoTip(
+                    tipText = "If selected, W' will be calculated using a three parameter model which includes max 1s power",
+                    tipId = "Max Power"
                 )
             }
             Row(
-                modifier = Modifier.padding(start = 5.dp),
+                modifier = Modifier.padding(start = 5.dp, end = 5.dp),
             ) {
                 Switch(
                     checked = currentConfig.useKarooFtp,
@@ -212,8 +225,13 @@ fun WPrimeConfigScreen(
                 Text(
                     modifier = Modifier
                         .padding(start = 5.dp)
-                        .align(Alignment.CenterVertically),
+                        .weight(1f),
                     text = "Use the Karoo FTP?",
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                InfoTip(
+                    tipText = "Use the Karoo FTP as the critical power or enter your own",
+                    tipId = "Use Karoo FTP"
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -311,7 +329,7 @@ fun WPrimeConfigScreen(
                     maxPowerInput = newValue // Always update the string state first
                     val parsedValue = newValue.toIntOrNull()
                     if (parsedValue != null && parsedValue in (500..5000)) {
-                        currentConfig = currentConfig.copy(wPrime = parsedValue) // Update numerical state only if valid
+                        currentConfig = currentConfig.copy(maxPower = parsedValue) // Update numerical state only if valid
                         wPrimeError = false
                         Timber.d("Max Power parsed successfully: $parsedValue, currentConfig: $currentConfig")
                     } else {
@@ -326,7 +344,7 @@ fun WPrimeConfigScreen(
                 singleLine = true,
                 isError = maxPowerError,
                 supportingText = {
-                    if (wPrimeError) {
+                    if (maxPowerError) {
                         Text("Please enter a valid number between 500 and 5000")
                     }
                 },
@@ -366,7 +384,7 @@ fun WPrimeConfigScreen(
                         Timber.w("Save blocked due to input validation errors.")
                     }
                 },
-                enabled = !wPrimeError && !criticalPowerError
+                enabled = !wPrimeError && !criticalPowerError && !maxPowerError
             ) {
                 Icon(Icons.Default.Check, contentDescription = "Save")
                 Spacer(modifier = Modifier.width(5.dp))
@@ -405,9 +423,11 @@ fun WPrimeConfigScreen(
                         // Re-set input fields to reflect originalConfig values
                         wPrimeInput = originalConfig.wPrime.toString()
                         criticalPowerInput = originalConfig.criticalPower.toString()
+                        maxPowerInput = originalConfig.maxPower.toString()
                         // Clear any errors that might have been present
                         wPrimeError = false
                         criticalPowerError = false
+                        maxPowerError = false
                         onUnsavedChangesChange(false) // Explicitly signal no unsaved changes
                         fieldHasChanges = false
                         val activity = context as? ComponentActivity
