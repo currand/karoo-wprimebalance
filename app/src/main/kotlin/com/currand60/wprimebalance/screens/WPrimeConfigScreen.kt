@@ -189,6 +189,7 @@ fun WPrimeConfigScreen(
             }
             Row(
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Switch(
                     checked = currentConfig.useThreeParamModel,
@@ -201,17 +202,21 @@ fun WPrimeConfigScreen(
                 Text(
                     modifier = Modifier
                         .padding(start = 5.dp)
-                        .weight(1f),
-                    text = "Use Three Parameter Model",
+                        .weight(1f)
+                    ,
+                    text = "Calculate MPA?",
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 InfoTip(
-                    tipText = "If selected, W' will be calculated using a three parameter model which includes max 1s power",
-                    tipId = "Max Power"
+                    tipText = "If selected, Max Power Available (MPA) will be calculated using a " +
+                            "3-parameter model which includes your max 1s power",
+                    tipId = "Max Power Available (MPA)"
                 )
             }
             Row(
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+
             ) {
                 Switch(
                     checked = currentConfig.useKarooFtp,
@@ -356,7 +361,9 @@ fun WPrimeConfigScreen(
             ) {
                 Text("Enter your W' in Joules and CP60 (FTP) if you know them. If you are unsure " +
                         "select the option to calculate it mid-ride. After a few hard efforts, you " +
-                        "can see your estimate mid-ride and as an end of ride notification."
+                        "can see your estimate mid-ride and as an end of ride notification. " +
+                        "If you know your max power, you can use the 3-parameter model for a " +
+                        "estimation of max power available (MPA) based on remaining W' available"
                 )
             }
             // Save Button
