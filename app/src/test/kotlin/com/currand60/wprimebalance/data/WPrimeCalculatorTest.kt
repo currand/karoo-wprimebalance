@@ -65,7 +65,7 @@ class WPrimeCalculatorTest {
 
         @Test
         @DisplayName("wPrimeBalance should be initialized to wPrimeUsr after resetRideState")
-        fun `wPrimeBalance is initialized correctly after resetRideState`() = runTest(testDispatcher) {
+        fun wPrimeBalanceIsInitializedToWPrimeUsrAfterReset() = runTest(testDispatcher) {
             // Given
             val initialTimestamp = System.currentTimeMillis()
             val initialConfig = ConfigData(criticalPower = 300, wPrime = 22000, calculateCp = false, maxPower = 1000)
@@ -88,7 +88,7 @@ class WPrimeCalculatorTest {
 
         @Test
         @DisplayName("wPrimeBalance matches values from https://medium.com/critical-powers/comparison-of-wbalance-algorithms-8838173e2c15")
-        fun `wPrimeBalance matches expected values`() = runTest(testDispatcher) {
+        fun wPrimeBalanceCalculationMatchesReference() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val originalCp = 350
@@ -140,7 +140,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -157,7 +157,7 @@ class WPrimeCalculatorTest {
 
         @Test
         @DisplayName("wPrimeBalance is calculated correctly")
-        fun `wPrimeBalance is calculated correctly`() = runTest(testDispatcher) {
+        fun `wPrimeBalanceIsCalculatedCorrectly`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -182,7 +182,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -193,7 +193,7 @@ class WPrimeCalculatorTest {
 
         @Test
         @DisplayName("CP60 is updated when wPrimeBalance becomes negative")
-        fun `CP60 is updated when wPrimeBalance becomes negative`() = runTest(testDispatcher) {
+        fun `CP60IsUpdatedWhenWPrimeBalanceBecomesNegative`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -213,7 +213,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     val currentTime = initialTimestamp + elapsedTime
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, CP60: ${wPrimeCalculator.getCurrentCP()}, wPrimeBalance: ${wPrimeCalculator.getWPrimeBalance()}")
                 }
@@ -225,7 +225,7 @@ class WPrimeCalculatorTest {
 
     @Test
     @DisplayName("wPrimeBalance time to exhaust is calculated correctly")
-    fun `wPrimeBalance time to exhaust is calculated correctly`() = runTest(testDispatcher) {
+    fun calculateTimeToExhaust_givenPowerAboveCp() = runTest(testDispatcher) {
         val stepLength = 1000L
         val initialTimestamp = System.currentTimeMillis()
         val initialConfig = ConfigData(criticalPower = 200, wPrime = 12000, calculateCp = false, maxPower = 1000)
@@ -243,7 +243,7 @@ class WPrimeCalculatorTest {
 
             for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                 val currentTime = initialTimestamp + elapsedTime
-                wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                 testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
             }
         }
@@ -284,7 +284,7 @@ class WPrimeCalculatorTest {
     inner class MatchTests {
 
         @Test
-        fun `Matches are calculated correctly`() = runTest(testDispatcher) {
+        fun `wPrimeMatchesAreCalculatedCorrectly`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -320,7 +320,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -330,7 +330,7 @@ class WPrimeCalculatorTest {
         }
 
         @Test
-        fun `Current match getters are accurate`() = runTest(testDispatcher) {
+        fun `CurrentMatchGettersAreAccurate`() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -361,7 +361,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -378,7 +378,7 @@ class WPrimeCalculatorTest {
         }
 
         @Test
-        fun `Last match getters are accurate`() = runTest(testDispatcher) {
+        fun lastMatchGettersAreAccurate() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -410,7 +410,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -433,7 +433,7 @@ class WPrimeCalculatorTest {
         }
 
         @Test
-        fun `Match not counted if all criteria not met`() = runTest(testDispatcher) {
+        fun matchNotCountedWhenConditionsAreNotMet() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -467,7 +467,7 @@ class WPrimeCalculatorTest {
 
                 for (elapsedTime in stepLength until durationMs + stepLength step stepLength) {
                     currentTime += stepLength
-                    wPrimeCalculator.calculateWPrimeBalance(power, currentTime)
+                    wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
                     testDispatcher.scheduler.advanceUntilIdle() // Ensure updateWPrimeBalance coroutine completes
 //                    println("Time: $currentTime, wPrimeBalance: ${wPrimeCalculator.wPrimeBalance}")
                 }
@@ -484,7 +484,7 @@ class WPrimeCalculatorTest {
         }
         @Test
         @DisplayName("Effort is discarded if recovery time passes but duration/joules not met")
-        fun `Short duration but high Joules is a match`() = runTest(testDispatcher) {
+        fun shortDurationHighJoulesIsDiscarded() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -523,7 +523,7 @@ class WPrimeCalculatorTest {
 
             for (elapsedTime in stepLength until burstDuration + stepLength step stepLength) {
                 currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(burstPower, currentTime)
+                wPrimeCalculator.calculateWPrimeBalance(burstPower.toDouble(), currentTime)
                 testDispatcher.scheduler.advanceUntilIdle()
             }
 
@@ -541,7 +541,7 @@ class WPrimeCalculatorTest {
 
             for (elapsedTime in stepLength until recoveryDuration + stepLength step stepLength) {
                 currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(recoveryPower, currentTime)
+                wPrimeCalculator.calculateWPrimeBalance(recoveryPower.toDouble(), currentTime)
                 testDispatcher.scheduler.advanceUntilIdle()
             }
 
@@ -558,7 +558,7 @@ class WPrimeCalculatorTest {
         }
         @Test
         @DisplayName("Long duration but low Joules is not a match")
-        fun `Long duration but low Joules is not a match`() = runTest(testDispatcher) {
+        fun longDurationLowJoulesIsNotAMatch() = runTest(testDispatcher) {
             // Given
             val stepLength = 1000L
             val initialTimestamp = System.currentTimeMillis()
@@ -569,8 +569,6 @@ class WPrimeCalculatorTest {
             val minMatchDurationSeconds = 30 // 30 seconds
             val matchJoulePercent = 30 // 10% W' depletion (20000 * 0.10 = 2000J)
             val matchPowerPercent = 105 // minEffortPower = 300 * 1.05 = 315W
-
-            val recoveryTime = 15000L
 
             val initialConfig = ConfigData(
                 criticalPower = criticalPower,
@@ -595,11 +593,11 @@ class WPrimeCalculatorTest {
             // Duration: 10 seconds (10000ms) - this is < 30000ms (MIN_EFFORT_DURATION_MS)
             // Joules depleted: 2000J (burstPower * burstDuration) = ~8800J
             val burstPower = 330
-            val burstDuration = 31000L // 2 seconds
+            val burstDuration = 31000L
 
             for (elapsedTime in stepLength until burstDuration + stepLength step stepLength) {
                 currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(burstPower, currentTime)
+                wPrimeCalculator.calculateWPrimeBalance(burstPower.toDouble(), currentTime)
                 testDispatcher.scheduler.advanceUntilIdle()
             }
 
@@ -617,7 +615,7 @@ class WPrimeCalculatorTest {
 
             for (elapsedTime in stepLength until recoveryDuration + stepLength step stepLength) {
                 currentTime += stepLength
-                wPrimeCalculator.calculateWPrimeBalance(recoveryPower, currentTime)
+                wPrimeCalculator.calculateWPrimeBalance(recoveryPower.toDouble(), currentTime)
                 testDispatcher.scheduler.advanceUntilIdle()
             }
 
@@ -633,5 +631,71 @@ class WPrimeCalculatorTest {
             assertEquals(0L, wPrimeCalculator.getCurrentMatchJoulesDepleted(), "Current match joules depleted should be reset to 0")
         }
 
+    }
+    @Nested
+    @DisplayName("Max Power Available Tests")
+    inner class MpaCalculationTests {
+
+        @Test
+        @DisplayName("MPA at rest is calculated correctly")
+        fun `MPAAtRestIsCalculatedCorrectly`() = runTest(testDispatcher) {
+            // Given
+            val initialTimestamp = System.currentTimeMillis()
+            val initialConfig = ConfigData(
+                criticalPower = 300,
+                wPrime = 22000,
+                calculateCp = false,
+                maxPower = 1000
+            )
+            configFlow.value = initialConfig // Emit new config if different from default
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure config collection
+
+            // When
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure resetRideState coroutine completes
+
+            // Then
+            val expectedMpa = initialConfig.maxPower
+            assertEquals(
+                expectedMpa,
+                wPrimeCalculator.getMpa(),
+                "MPA should be ${initialConfig.maxPower} but is ${wPrimeCalculator.getMpa()}"
+            )
+        }
+        @Test
+        @DisplayName("MPA matches https://arxiv.org/pdf/2503.14841")
+        fun verifyMpaCalculationAgainstArxivPaper() = runTest(testDispatcher) {
+
+            val stepLength = 1000L
+            val initialTimestamp = System.currentTimeMillis()
+            var currentTime = initialTimestamp
+            val initialConfig = ConfigData(
+                criticalPower = 330,
+                wPrime = 25000,
+                calculateCp = false,
+                maxPower = 1200
+            )
+
+            configFlow.value = initialConfig // Emit new config if different from default
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle() // Ensure resetRideState coroutine completes
+
+            val instantaneousPower = 350
+            val duration = 2701000L
+
+            for (elapsedTime in stepLength until duration + stepLength step stepLength) {
+                currentTime += stepLength
+                wPrimeCalculator.calculateWPrimeBalance(instantaneousPower.toDouble(), currentTime)
+                testDispatcher.scheduler.advanceUntilIdle()
+            }
+
+            // Then
+            val expectedMpa = initialConfig.maxPower
+            assertEquals(
+                expectedMpa,
+                wPrimeCalculator.getMpa(),
+                "MPA should be ${initialConfig.maxPower} but is ${wPrimeCalculator.getMpa()}"
+            )
+        }
     }
 }

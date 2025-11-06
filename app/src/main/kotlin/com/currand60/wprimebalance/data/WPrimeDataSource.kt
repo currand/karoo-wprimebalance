@@ -56,7 +56,7 @@ class WPrimeDataSource(
                 when (it) {
                     is StreamState.Streaming -> {
                         val power = it.dataPoint.singleValue?.toInt() ?: 0
-                        val wPrimeBal = calculator.calculateWPrimeBalance(power,
+                        val wPrimeBal = calculator.calculateWPrimeBalance(power.toDouble(),
                             System.currentTimeMillis())
                         Timber.d("Updating W' Prime with wPrimeBal: $wPrimeBal")
                         emitter.onNext(
