@@ -52,4 +52,10 @@
         displayName="@string/currentmatchduration_datatype"
         graphical="false"
         icon="@drawable/fire_24px" />
+    <DataType
+        typeId="currentmaxpoweravailable"
+        description="@string/currentmaxpoweravailable_description"
+        displayName="@string/currentmaxpoweravailable_datatype"
+        graphical="false"
+        icon="@drawable/icon_gauge" />
 </ExtensionInfo>

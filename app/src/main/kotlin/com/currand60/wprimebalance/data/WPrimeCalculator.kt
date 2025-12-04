@@ -47,6 +47,7 @@ class WPrimeCalculator(
     private var sumPowerAboveCP: Double = 0.0
     private var countPowerAboveCP: Long = 0
     private var avPower: Double = 0.0
+    private var averagePowerBelowCP: Double = 0.0
 
     private var iTLim: Double = 0.0
     private var timeSpent: Double = 0.0
@@ -57,6 +58,7 @@ class WPrimeCalculator(
     private var currentCp60: Double = 0.0
     private var currentWPrimeUsr: Double = 0.0
     private var currentMpa: Double = 0.0
+    private var currentTau: Double = 862.0
 
     // Match calculation related variables
     private var totalMatches: Long = 0
@@ -124,8 +126,10 @@ class WPrimeCalculator(
         sumPowerAboveCP = 0.0
         countPowerAboveCP = 0L
         avPower = 0.0
+        averagePowerBelowCP = 0.0
         iTLim = 0.0
         timeSpent = 0.0
+        currentTau = 862.0
 
         prevReadingTime = initialTimestampMillis // Set initial timestamp for ride calculations
         nextUpdateLevel = 0L
@@ -152,23 +156,20 @@ class WPrimeCalculator(
 
     // ------------------------ W'Balance Functions -----------------------------------
 
-    private fun calculateAveragePowerBelowCP(iPower: Double, iCP: Double): Double {
+    private fun calculateAveragePowerBelowCP(iPower: Double) {
 
-        if (iPower < iCP) {
-            sumPowerBelowCP += iPower
-            countPowerBelowCP++
-        }
+        sumPowerBelowCP += iPower
+        countPowerBelowCP++
 
-        return if (countPowerBelowCP > 0) {
-            sumPowerBelowCP / countPowerBelowCP // Calculate and return average power below CP
+        averagePowerBelowCP = if (countPowerBelowCP > 0) {
+            sumPowerBelowCP / countPowerBelowCP.toDouble() // Calculate and return average power below CP
         } else {
             0.0 // Return 0 if no power readings below CP have been recorded yet
         }
     }
 
-
     private fun calculateAveragePowerAboveCP(iPower: Double) {
-        sumPowerAboveCP += iPower.toLong()
+        sumPowerAboveCP += iPower
         countPowerAboveCP++
         // Handle division by zero for the average calculation.
         avPower = if (countPowerAboveCP > 0) {
@@ -178,10 +179,13 @@ class WPrimeCalculator(
         }
     }
 
-    private fun tauWPrimeBalance(iPower: Double, iCP: Double): Double {
-        val avgPowerBelowCp = calculateAveragePowerBelowCP(iPower, iCP)
-        val deltaCp = (iCP - avgPowerBelowCp)
-        return (546.00 * exp(-0.01 * deltaCp) + 316.00)
+    private fun tauWPrimeBalance(iCP: Double, useDynamic: Boolean = true) {
+        if (!useDynamic) {
+            currentTau = currentWPrimeUsr / iCP
+        } else {
+            val deltaCp = (iCP - averagePowerBelowCP)
+            currentTau = 546.00 * exp(-0.01 * deltaCp) + 316.00
+        }
     }
 
     // The Waterworth method of calculating W' Balance.
@@ -190,29 +194,32 @@ class WPrimeCalculator(
         // Using the provided `currentTimestampMillis` for calculation.
         val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
         prevReadingTime = currentTimestampMillis
-
-        val tau = tauWPrimeBalance(iPower, iCP)
         timeSpent += sampleTime // The summed value of all sample time values during the workout
 
         val powerAboveCp = (iPower - iCP)
+        if (powerAboveCp > 0) {
+            calculateAveragePowerAboveCP(iPower)
+            tauWPrimeBalance(iCP)
+            iTLim += sampleTime // Time to exhaustion: accurate sum of every second spent above CP
+        } else {
+            calculateAveragePowerBelowCP(iPower)
+            tauWPrimeBalance(iCP)
+        }
 
-        // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
+
+
+            // Determine the expended energy above CP since the previous measurement (i.e., during SampleTime).
         val wPrimeExpended = max(0.0, powerAboveCp) * sampleTime // Calculates (Watts_above_CP) * (its duration in seconds)
 
         // Calculate the exponential terms used in the W' balance equation.
-        val expTerm1 = exp(timeSpent / tau) // Exponential term 1
-        val expTerm2 = exp(-timeSpent / tau) // Exponential term 2
+        val expTerm1 = exp(timeSpent / currentTau) // Exponential term 1
+        val expTerm2 = exp(-timeSpent / currentTau) // Exponential term 2
 
         runningSum = runningSum + (wPrimeExpended * expTerm1) // Determine the running sum
 
         wPrimeBalance = currentWPrimeUsr - (runningSum * expTerm2)
 
-        //--------------- extra --------------------------------------------------------------------------------------
-        // This section implements logic to dynamically update estimated CP and W' based on depletion levels.
-        if (powerAboveCp > 0) {
-            calculateAveragePowerAboveCP(iPower)
-            iTLim += sampleTime // Time to exhaustion: accurate sum of every second spent above CP
-        }
+
 
         // Check if W' balance is further depleted to a new "level" to trigger an update of eCP and ew_prime.
         if ((wPrimeBalance < nextUpdateLevel) && (wPrimeExpended > 0)) {
@@ -246,7 +253,7 @@ class WPrimeCalculator(
     }
 
     private fun getCpFromTwoParameterAlgorithm(iavPower: Double, iTLim: Double, currentWPrimeUsr: Double): Double {
-        val wPrimeDivTLim = (currentWPrimeUsr.toDouble() / iTLim).toInt()
+        val wPrimeDivTLim = (currentWPrimeUsr / iTLim).toInt()
 
         return if (iavPower > wPrimeDivTLim) {
             (iavPower - wPrimeDivTLim) // Solve 2-parameter algorithm to estimate CP
