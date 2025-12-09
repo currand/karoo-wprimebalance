@@ -68,7 +68,7 @@ class WPrimeCalculator(
     private var minEffortJouleDrop: Double = 2000.0
     private var minEffortDuration = 30000L
     private var matchPowerPercent = 1.05
-    private var lastEffortDuration: Long = 0 // Duration of the effort block when the last match was triggered (ms)
+    private var lastEffortDuration = 0L // Duration of the effort block when the last match was triggered (ms)
     private var lastEffortJoulesDepleted: Double = 0.0 // Total Joules depleted in the *last full effort* that qualified as a match
     private var isInEffortBlock: Boolean = false
     private var wPrimeStartOfCurrentBlock: Double = 0.0 // W' balance at the start of the current effort block
@@ -193,7 +193,6 @@ class WPrimeCalculator(
         // Determine the individual sample time in seconds, it may/will vary during the workout.
         // Using the provided `currentTimestampMillis` for calculation.
         val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
-        prevReadingTime = currentTimestampMillis
         timeSpent += sampleTime // The summed value of all sample time values during the workout
 
         val powerAboveCp = (iPower - iCP)
@@ -284,6 +283,7 @@ class WPrimeCalculator(
         calculateMpa()
 
         wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
+        prevReadingTime = currentTimeMillis
 
         if (useEstimatedCp) {
             // Allow the algorithm to update CP and W' values mid-ride
