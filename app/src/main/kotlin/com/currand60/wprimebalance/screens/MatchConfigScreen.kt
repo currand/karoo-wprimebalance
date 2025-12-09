@@ -50,14 +50,14 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import timber.log.Timber
 
-@Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
 @Composable
 fun MatchConfigScreen(
+    configManager: ConfigurationManager = koinInject(),
     onUnsavedChangesChange: (Boolean) -> Unit = {}
 ) {
 
     val context = LocalContext.current
-    val configManager: ConfigurationManager = koinInject()
+
     val coroutineScope = rememberCoroutineScope()
 
     var showUnsavedChangesDialogForBack by remember { mutableStateOf(false) }
@@ -325,3 +325,11 @@ fun MatchConfigScreen(
     }
 }
 
+@Preview(name = "karoo", device = "spec:width=480px,height=800px,dpi=300")
+@Composable
+private fun Preview_MatchConfig() {
+    val context = LocalContext.current
+    MatchConfigScreen(
+        configManager = ConfigurationManager(context)
+    )
+}

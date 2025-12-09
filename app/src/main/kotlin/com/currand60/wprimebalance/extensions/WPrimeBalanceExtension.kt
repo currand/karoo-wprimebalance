@@ -4,6 +4,7 @@ import com.currand60.wprimebalance.BuildConfig
 import com.currand60.wprimebalance.KarooSystemServiceProvider
 import com.currand60.wprimebalance.data.CurrentMatchDuration
 import com.currand60.wprimebalance.data.CurrentMatchJoules
+import com.currand60.wprimebalance.data.CurrentMpa
 import com.currand60.wprimebalance.data.LastMatchDuration
 import com.currand60.wprimebalance.data.LastMatchJoules
 import com.currand60.wprimebalance.data.MatchDataType
@@ -49,7 +50,8 @@ class WPrimeBalanceExtension : KarooExtension("wprimebalance", BuildConfig.VERSI
             LastMatchJoules( extension, wPrimeCalculator),
             LastMatchDuration(extension, wPrimeCalculator),
             CurrentMatchJoules(extension, wPrimeCalculator),
-            CurrentMatchDuration(extension, wPrimeCalculator)
+            CurrentMatchDuration(extension, wPrimeCalculator),
+            CurrentMpa(extension, wPrimeCalculator)
         )
     }
 
