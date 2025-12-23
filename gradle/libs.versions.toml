@@ -28,7 +28,7 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 [libraries]
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
-hammerhead-karoo-ext = { group = "io.hammerhead", name = "karoo-ext", version = "1.1.6" }
+hammerhead-karoo-ext = { group = "io.hammerhead", name = "karoo-ext", version = "1.1.7" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin-bom" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin-bom" }
