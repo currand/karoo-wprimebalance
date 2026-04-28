@@ -22,6 +22,7 @@ Your mileage may vary, not available in all 50 states, prices higher in HI and A
 
 private const val CP_TEST_DURATION_S = 1200.0
 private const val RECOVERY_MARGIN_MS = 15_000L // Minimum recovery time to start a new effort block
+private const val MAX_SAMPLE_TIME_MS = 1_000L
 
 class WPrimeCalculator(
     private val configurationManager: ConfigurationManager,
@@ -74,7 +75,6 @@ class WPrimeCalculator(
     private var wPrimeStartOfCurrentBlock: Double = 0.0 // W' balance at the start of the current effort block
     private var currentEffortStartTimeMillis: Long = 0 // Timestamp when the current effort block started
     private var timeBelowCPLimit: Long = 0 // Accumulates time (ms) spent below CP for recovery margin
-
 
     init {
         Timber.d("WPrimeCalculator created. Starting config observer.")
@@ -189,10 +189,10 @@ class WPrimeCalculator(
     }
 
     // The Waterworth method of calculating W' Balance.
-    private fun wPrimeBalanceWaterworth(iPower: Double, iCP: Double, currentWPrimeUsr: Double, currentTimestampMillis: Long) {
-        // Determine the individual sample time in seconds, it may/will vary during the workout.
-        // Using the provided `currentTimestampMillis` for calculation.
-        val sampleTime = (currentTimestampMillis - prevReadingTime) / 1000.0
+    private fun wPrimeBalanceWaterworth(iPower: Double, iCP: Double, currentWPrimeUsr: Double, sampleTimeMillis: Long) {
+        // Determine the individual sample time in seconds, normalized to avoid delayed or out-of-order samples
+        // from producing physically impossible depletion jumps.
+        val sampleTime = sampleTimeMillis / 1000.0
         timeSpent += sampleTime // The summed value of all sample time values during the workout
 
         val powerAboveCp = (iPower - iCP)
@@ -278,11 +278,13 @@ class WPrimeCalculator(
      * @return The updated W' Prime Balance in Joules.
      */
     fun calculateWPrimeBalance(instantaneousPower: Double, currentTimeMillis: Long): Double {
+        val rawSampleTime = currentTimeMillis - prevReadingTime
+        val normalizedSampleTime = rawSampleTime.coerceIn(0L, MAX_SAMPLE_TIME_MS)
 
-        calculateMatches(instantaneousPower, currentTimeMillis)
+        calculateMatches(instantaneousPower, currentTimeMillis, normalizedSampleTime)
         calculateMpa()
 
-        wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, currentTimeMillis)
+        wPrimeBalanceWaterworth(instantaneousPower, currentCp60, currentWPrimeUsr, normalizedSampleTime)
         prevReadingTime = currentTimeMillis
 
         if (useEstimatedCp) {
@@ -294,8 +296,7 @@ class WPrimeCalculator(
     }
 
     // ---------------- Matches ---------------------
-    private fun calculateMatches(instantaneousPower: Double, currentTimeMillis: Long) {
-        val sampleTime = (currentTimeMillis - prevReadingTime)
+    private fun calculateMatches(instantaneousPower: Double, currentTimeMillis: Long, sampleTime: Long) {
         val minEffortPower = currentCp60 * matchPowerPercent
 
         if (!isInEffortBlock) {

@@ -1,21 +1,21 @@
 [versions]
 agp = "8.11.2"
-kotlin = "2.2.21"
+kotlin = "2.3.21"
 
-androidxCore = "1.17.0"
-androidxLifecycle = "2.9.4"
-androidxActivity = "1.11.0"
-androidxComposeUi = "1.9.4"
+androidxCore = "1.18.0"
+androidxLifecycle = "2.10.0"
+androidxActivity = "1.13.0"
+androidxComposeUi = "1.11.0"
 androidxComposeMaterial = "1.4.0"
 glance = "1.1.1"
 javaxInject = "1"
-datastorePreferences = "1.1.7"
-junitJupiter = "6.0.0"
+datastorePreferences = "1.2.1"
+junitJupiter = "6.0.3"
 kotlinxCoroutinesTest = "1.10.2"
-kotlinxSerializationJson = "1.9.0"
-mockk = "1.14.6"
-koin-bom = "4.1.1"
-navigationRuntimeAndroid = "2.9.5"
+kotlinxSerializationJson = "1.11.0"
+mockk = "1.14.9"
+koin-bom = "4.2.1"
+navigationRuntimeAndroid = "2.9.8"
 materialIconsExtended = "1.7.8"
 
 
@@ -28,7 +28,7 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 [libraries]
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
-hammerhead-karoo-ext = { group = "io.hammerhead", name = "karoo-ext", version = "1.1.7" }
+hammerhead-karoo-ext = { group = "io.hammerhead", name = "karoo-ext", version = "1.1.9" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin-bom" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin-bom" }

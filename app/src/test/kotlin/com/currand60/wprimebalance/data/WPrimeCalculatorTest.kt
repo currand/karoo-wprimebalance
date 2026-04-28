@@ -61,6 +61,26 @@ class WPrimeCalculatorTest {
         Dispatchers.resetMain()
     }
 
+    private fun setPrivateField(name: String, value: Any) {
+        val field = WPrimeCalculator::class.java.getDeclaredField(name)
+        field.isAccessible = true
+        field.set(wPrimeCalculator, value)
+    }
+
+    private fun invokePrivateMethod(name: String, vararg args: Any): Any? {
+        val argTypes = args.map {
+            when (it) {
+                is java.lang.Double -> Double::class.javaPrimitiveType!!
+                is java.lang.Long -> Long::class.javaPrimitiveType!!
+                is java.lang.Boolean -> Boolean::class.javaPrimitiveType!!
+                else -> it::class.java
+            }
+        }.toTypedArray()
+        val method = WPrimeCalculator::class.java.getDeclaredMethod(name, *argTypes)
+        method.isAccessible = true
+        return method.invoke(wPrimeCalculator, *args)
+    }
+
     @Nested
     @DisplayName("Initialization and Reset Tests")
     inner class InitializationTests {
@@ -339,6 +359,42 @@ class WPrimeCalculatorTest {
     @Nested
     @DisplayName("Match tests")
     inner class MatchTests {
+        private val stepLengthMs = 1000L
+
+        private suspend fun configureAndReset(
+            config: ConfigData,
+            initialTimestamp: Long
+        ) {
+            configFlow.value = config
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+        }
+
+        private fun simulatePower(
+            power: Int,
+            durationMs: Long,
+            startTime: Long
+        ): Long {
+            var currentTime = startTime
+            for (elapsedTime in stepLengthMs until durationMs + stepLengthMs step stepLengthMs) {
+                currentTime += stepLengthMs
+                wPrimeCalculator.calculateWPrimeBalance(power.toDouble(), currentTime)
+                testDispatcher.scheduler.advanceUntilIdle()
+            }
+            return currentTime
+        }
+
+        private fun simulateSequence(
+            steps: List<Pair<Int, Long>>,
+            startTime: Long
+        ): Long {
+            var currentTime = startTime
+            for ((power, durationMs) in steps) {
+                currentTime = simulatePower(power, durationMs, currentTime)
+            }
+            return currentTime
+        }
 
         @Test
         fun `wPrimeMatchesAreCalculatedCorrectly`() = runTest(testDispatcher) {
@@ -688,6 +744,339 @@ class WPrimeCalculatorTest {
             assertEquals(0L, wPrimeCalculator.getCurrentMatchJoulesDepleted(), "Current match joules depleted should be reset to 0")
         }
 
+        @Test
+        fun matchDoesNotStartWhenPowerEqualsMatchThreshold() = runTest(testDispatcher) {
+            val initialTimestamp = 10_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                matchPowerPercent = 105,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            simulatePower(power = 315, durationMs = 45_000L, startTime = initialTimestamp)
+
+            assertEquals(0, wPrimeCalculator.getMatches(), "A power value exactly at threshold must not start a match block")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "The state machine should remain out of effort block")
+            assertEquals(0L, wPrimeCalculator.getCurrentMatchDepletionDuration())
+            assertEquals(0L, wPrimeCalculator.getCurrentMatchJoulesDepleted())
+        }
+
+        @Test
+        fun recoveryFinalizesAtExactRecoveryMargin() = runTest(testDispatcher) {
+            val initialTimestamp = 20_000L
+            val config = ConfigData(
+                criticalPower = 350,
+                wPrime = 22_300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterEffort = simulatePower(power = 450, durationMs = 30_000L, startTime = initialTimestamp)
+            val after14sRecovery = simulatePower(power = 100, durationMs = 14_000L, startTime = afterEffort)
+
+            assertEquals(0, wPrimeCalculator.getMatches(), "Recovery must not finalize before 15 seconds")
+            assertTrue(wPrimeCalculator.getInEffortBlock(), "Effort block should still be active at 14 seconds recovery")
+
+            simulatePower(power = 100, durationMs = 1_000L, startTime = after14sRecovery)
+
+            assertEquals(1, wPrimeCalculator.getMatches(), "Recovery should finalize exactly at 15 seconds")
+            assertTrue(!wPrimeCalculator.getInEffortBlock(), "Effort block should be closed after finalization")
+            assertEquals(30_000L, wPrimeCalculator.getLastMatchDepletionDuration())
+        }
+
+        @Test
+        fun matchQualifiesAtExactDurationAndJouleThreshold() = runTest(testDispatcher) {
+            val initialTimestamp = 30_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 6,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterEffort = simulatePower(power = 500, durationMs = 30_000L, startTime = initialTimestamp)
+            simulatePower(power = 100, durationMs = 15_000L, startTime = afterEffort)
+
+            assertEquals(1, wPrimeCalculator.getMatches(), "A block meeting minimum duration and joule depletion should qualify")
+            assertEquals(30_000L, wPrimeCalculator.getLastMatchDepletionDuration(), "Match should be recorded at exact 30s boundary")
+            assertTrue(
+                wPrimeCalculator.getLastMatchJoulesDepleted() >= 1_200L,
+                "Joule depletion should meet configured minimum threshold"
+            )
+        }
+
+        @Test
+        fun largeTimestampJumpDuringEffortProducesExpectedAndBoundedLastDuration() = runTest(testDispatcher) {
+            val initialTimestamp = 40_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 5,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterQualified = simulateSequence(
+                steps = listOf(
+                    Pair(100, 5_000L),
+                    Pair(500, 30_000L),
+                    Pair(100, 16_000L),
+                ),
+                startTime = initialTimestamp
+            )
+            assertEquals(1, wPrimeCalculator.getMatches())
+            val baselineLastDuration = wPrimeCalculator.getLastMatchDepletionDuration()
+            val baselineLastJoules = wPrimeCalculator.getLastMatchJoulesDepleted()
+
+            // Start a second effort and inject a large timestamp jump.
+            val effortStart = simulatePower(power = 500, durationMs = 1_000L, startTime = afterQualified)
+            val t2 = effortStart + 1_200_000L
+            wPrimeCalculator.calculateWPrimeBalance(500.0, t2)
+            testDispatcher.scheduler.advanceUntilIdle()
+            simulatePower(power = 100, durationMs = 15_000L, startTime = t2)
+
+            // Characterization: a pathological time jump must not overwrite last qualified values with garbage.
+            assertEquals(1, wPrimeCalculator.getMatches())
+            assertEquals(baselineLastDuration, wPrimeCalculator.getLastMatchDepletionDuration())
+            assertEquals(baselineLastJoules, wPrimeCalculator.getLastMatchJoulesDepleted())
+            assertTrue(baselineLastDuration in 30_000L..31_000L)
+        }
+
+        @Test
+        fun largeTimestampJumpIsNormalizedInCurrentEffortDurationBeforeRecoveryFinalization() = runTest(testDispatcher) {
+            val initialTimestamp = 45_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 5,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val t1 = initialTimestamp + 1_000L
+            wPrimeCalculator.calculateWPrimeBalance(500.0, t1)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val t2 = t1 + 1_200_000L
+            wPrimeCalculator.calculateWPrimeBalance(500.0, t2)
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(
+                0L,
+                wPrimeCalculator.getCurrentMatchDepletionDuration(),
+                "With normalized sampling, the effort remains below display threshold instead of exploding into a long duration"
+            )
+        }
+
+        @Test
+        fun nonMonotonicTimestampDoesNotProduceNegativeOrPhantomLastMatch() = runTest(testDispatcher) {
+            val initialTimestamp = 50_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterWarmup = simulatePower(power = 450, durationMs = 10_000L, startTime = initialTimestamp)
+            wPrimeCalculator.calculateWPrimeBalance(450.0, afterWarmup - 2_000L)
+            testDispatcher.scheduler.advanceUntilIdle()
+            val afterRecovery = simulatePower(power = 100, durationMs = 16_000L, startTime = afterWarmup)
+
+            simulatePower(power = 450, durationMs = 5_000L, startTime = afterRecovery)
+
+            assertTrue(wPrimeCalculator.getLastMatchDepletionDuration() >= 0L, "Last match duration must never be negative")
+            assertTrue(wPrimeCalculator.getLastMatchJoulesDepleted() >= 0L, "Last match joules must never be negative")
+            assertTrue(wPrimeCalculator.getMatches() in 0..1, "Non-monotonic timestamp should not fabricate extra matches")
+        }
+
+        @Test
+        fun duplicateTimestampDoesNotCorruptEffortState() = runTest(testDispatcher) {
+            val initialTimestamp = 60_000L
+            val config = ConfigData(
+                criticalPower = 350,
+                wPrime = 22_300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val t1 = initialTimestamp + 1_000L
+            wPrimeCalculator.calculateWPrimeBalance(450.0, t1)
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.calculateWPrimeBalance(450.0, t1)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val afterEffort = simulatePower(power = 450, durationMs = 29_000L, startTime = t1)
+            simulatePower(power = 100, durationMs = 15_000L, startTime = afterEffort)
+
+            assertEquals(1, wPrimeCalculator.getMatches())
+            assertEquals(30_000L, wPrimeCalculator.getLastMatchDepletionDuration())
+            assertTrue(wPrimeCalculator.getLastMatchJoulesDepleted() in 2_000L..5_000L)
+        }
+
+        @Test
+        fun lastMatchValuesRemainStableAfterNonQualifyingEffort() = runTest(testDispatcher) {
+            val initialTimestamp = 70_000L
+            val config = ConfigData(
+                criticalPower = 350,
+                wPrime = 22_300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterQualified = simulateSequence(
+                steps = listOf(
+                    Pair(100, 5_000L),
+                    Pair(450, 30_000L),
+                    Pair(100, 16_000L)
+                ),
+                startTime = initialTimestamp
+            )
+            val stableDuration = wPrimeCalculator.getLastMatchDepletionDuration()
+            val stableJoules = wPrimeCalculator.getLastMatchJoulesDepleted()
+
+            simulateSequence(
+                steps = listOf(
+                    Pair(100, 900L),
+                    Pair(800, 5_000L),
+                    Pair(100, 16_000L)
+                ),
+                startTime = afterQualified
+            )
+
+            assertEquals(1, wPrimeCalculator.getMatches(), "Non-qualifying effort should not increment match count")
+            assertEquals(stableDuration, wPrimeCalculator.getLastMatchDepletionDuration(), "Last match duration should remain unchanged")
+            assertEquals(stableJoules, wPrimeCalculator.getLastMatchJoulesDepleted(), "Last match joules should remain unchanged")
+        }
+
+        @Test
+        fun lastMatchValuesResetOnRideReset() = runTest(testDispatcher) {
+            val initialTimestamp = 80_000L
+            val config = ConfigData(
+                criticalPower = 350,
+                wPrime = 22_300,
+                calculateCp = false,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterQualified = simulateSequence(
+                steps = listOf(
+                    Pair(100, 5_000L),
+                    Pair(450, 30_000L),
+                    Pair(100, 16_000L)
+                ),
+                startTime = initialTimestamp
+            )
+            assertEquals(1, wPrimeCalculator.getMatches())
+            assertTrue(wPrimeCalculator.getLastMatchDepletionDuration() > 0L)
+            assertTrue(wPrimeCalculator.getLastMatchJoulesDepleted() > 0L)
+
+            wPrimeCalculator.resetRideState(afterQualified + 10_000L)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(0, wPrimeCalculator.getMatches())
+            assertEquals(0L, wPrimeCalculator.getLastMatchDepletionDuration())
+            assertEquals(0L, wPrimeCalculator.getLastMatchJoulesDepleted())
+        }
+
+        @Test
+        fun matchAccountingStableWhenCalculateCpEnabled() = runTest(testDispatcher) {
+            val initialTimestamp = 90_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = true,
+                matchJoulePercent = 10,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            simulateSequence(
+                steps = listOf(
+                    Pair(100, 60_000L),
+                    Pair(450, 35_000L),
+                    Pair(100, 16_000L),
+                    Pair(450, 35_000L),
+                    Pair(100, 16_000L),
+                ),
+                startTime = initialTimestamp
+            )
+
+            assertTrue(wPrimeCalculator.getMatches() in 1..2)
+            assertTrue(
+                wPrimeCalculator.getLastMatchDepletionDuration() in 30_000L..60_000L,
+                "Last match duration should remain in a realistic range when estimated CP is enabled"
+            )
+            assertTrue(
+                wPrimeCalculator.getLastMatchJoulesDepleted() in 1_000L..20_000L,
+                "Last match joules should remain bounded when estimated CP is enabled"
+            )
+        }
+
+        @Test
+        fun programmaticRepro_largePowerTimestampGapDoesNotCreateOutlierLastMatchValues() = runTest(testDispatcher) {
+            val initialTimestamp = 100_000L
+            val config = ConfigData(
+                criticalPower = 300,
+                wPrime = 20_000,
+                calculateCp = false,
+                matchJoulePercent = 5,
+                minMatchDuration = 30,
+                maxPower = 1000
+            )
+            configureAndReset(config, initialTimestamp)
+
+            val afterWarmup = simulatePower(power = 100, durationMs = 5_000L, startTime = initialTimestamp)
+            val startEffort = simulatePower(power = 500, durationMs = 1_000L, startTime = afterWarmup)
+
+            // A realistic reproduction surrogate for delayed/missed device updates while rider is still above threshold.
+            val delayedHighPowerTimestamp = startEffort + 15 * 60 * 1000L
+            wPrimeCalculator.calculateWPrimeBalance(500.0, delayedHighPowerTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.calculateWPrimeBalance(500.0, delayedHighPowerTimestamp + 1_000L)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            simulatePower(power = 100, durationMs = 16_000L, startTime = delayedHighPowerTimestamp + 1_000L)
+
+            assertEquals(0, wPrimeCalculator.getMatches(), "A delayed timestamp alone should not synthesize a full match effort")
+            assertEquals(
+                0L,
+                wPrimeCalculator.getLastMatchDepletionDuration(),
+                "A delayed high-power sample must not create an outlier last match duration"
+            )
+            assertTrue(
+                wPrimeCalculator.getLastMatchJoulesDepleted() == 0L,
+                "A delayed high-power sample must not create an outlier last match joule depletion"
+            )
+        }
+
     }
     @Nested
     @DisplayName("Max Power Available Tests")
@@ -752,6 +1141,105 @@ class WPrimeCalculatorTest {
                 wPrimeCalculator.getMpa() in 1100..1200,
                 "MPA should be close to ${initialConfig.maxPower} but is ${wPrimeCalculator.getMpa()}"
             )
+        }
+    }
+
+    @Nested
+    @DisplayName("Coverage edge tests")
+    inner class CoverageEdgeTests {
+        @Test
+        fun `calculateTimeToExhaust returns zero when power below cp`() = runTest(testDispatcher) {
+            val initialTimestamp = 100_000L
+            val config = ConfigData(criticalPower = 300, wPrime = 20000, calculateCp = false, maxPower = 1000)
+            configFlow.value = config
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val result = wPrimeCalculator.calculateTimeToExhaust(250)
+            assertEquals(0, result)
+        }
+
+        @Test
+        fun `calculateTimeToExhaust returns zero when wPrime balance is depleted`() = runTest(testDispatcher) {
+            val initialTimestamp = 100_500L
+            val config = ConfigData(criticalPower = 300, wPrime = 20000, calculateCp = false, maxPower = 1000)
+            configFlow.value = config
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            setPrivateField("wPrimeBalance", -10.0)
+
+            val result = wPrimeCalculator.calculateTimeToExhaust(400)
+            assertEquals(0, result)
+        }
+
+        @Test
+        fun `calculateMpa returns zero when max power is not above cp`() = runTest(testDispatcher) {
+            val initialTimestamp = 101_000L
+            val config = ConfigData(criticalPower = 300, wPrime = 20000, calculateCp = false, maxPower = 250)
+            configFlow.value = config
+            testDispatcher.scheduler.advanceUntilIdle()
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            wPrimeCalculator.calculateMpa()
+            assertEquals(0, wPrimeCalculator.getMpa())
+        }
+
+        @Test
+        fun `private two-parameter algorithm methods cover else branches`() = runTest(testDispatcher) {
+            val initialTimestamp = 102_000L
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            setPrivateField("eCP", 321.0)
+            setPrivateField("wPrimeUsr", 20000.0)
+
+            val cpEstimate = invokePrivateMethod("getCpFromTwoParameterAlgorithm", 100.0, 10.0, 20000.0) as Double
+            assertEquals(321.0, cpEstimate)
+
+            val wPrimeEstimate = invokePrivateMethod("getWPrimeFromTwoParameterAlgorithm", 250.0, 1200.0, 300.0) as Double
+            assertEquals(20000.0, wPrimeEstimate)
+        }
+
+        @Test
+        fun `tauWPrimeBalance covers non-dynamic branch`() = runTest(testDispatcher) {
+            val initialTimestamp = 103_000L
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            setPrivateField("currentWPrimeUsr", 20000.0)
+            invokePrivateMethod("tauWPrimeBalance", 250.0, false)
+
+            val currentTauField = WPrimeCalculator::class.java.getDeclaredField("currentTau")
+            currentTauField.isAccessible = true
+            val currentTau = currentTauField.get(wPrimeCalculator) as Double
+            assertEquals(80.0, currentTau)
+        }
+
+        @Test
+        fun `average power helper methods cover overflow else branches`() = runTest(testDispatcher) {
+            val initialTimestamp = 104_000L
+            wPrimeCalculator.resetRideState(initialTimestamp)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            setPrivateField("countPowerBelowCP", Long.MAX_VALUE)
+            setPrivateField("sumPowerBelowCP", 100.0)
+            setPrivateField("countPowerAboveCP", Long.MAX_VALUE)
+            setPrivateField("sumPowerAboveCP", 100.0)
+
+            invokePrivateMethod("calculateAveragePowerBelowCP", 250.0)
+            invokePrivateMethod("calculateAveragePowerAboveCP", 250.0)
+
+            val avgBelowField = WPrimeCalculator::class.java.getDeclaredField("averagePowerBelowCP")
+            avgBelowField.isAccessible = true
+            val avgAboveField = WPrimeCalculator::class.java.getDeclaredField("avPower")
+            avgAboveField.isAccessible = true
+
+            assertEquals(0.0, avgBelowField.get(wPrimeCalculator))
+            assertEquals(0.0, avgAboveField.get(wPrimeCalculator))
         }
     }
 }

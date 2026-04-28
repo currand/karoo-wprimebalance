@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
     kotlin("plugin.serialization") version "2.0.20"
+    jacoco
 }
 
 android {
@@ -14,8 +15,8 @@ android {
         applicationId = "com.currand60.wprimebalance"
         minSdk = 23
         targetSdk = 34
-        versionCode = 25122301
-        versionName = "0.2.5"
+        versionCode = 26042801
+        versionName = "0.2.6"
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -102,4 +103,48 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     testImplementation(libs.junit.jupiter)
     implementation(libs.androidx.material.icons.extended)
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/*\$Lambda$*.*",
+        "**/*\$inlined$*.*",
+        "**/*Companion*.*",
+    )
+
+    val debugTree = fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val javaTree = fileTree("${layout.buildDirectory.get()}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+        exclude(fileFilter)
+    }
+
+    classDirectories.setFrom(files(debugTree, javaTree))
+    sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory.get()) {
+            include(
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+                "jacoco/testDebugUnitTest.exec",
+            )
+        }
+    )
 }
