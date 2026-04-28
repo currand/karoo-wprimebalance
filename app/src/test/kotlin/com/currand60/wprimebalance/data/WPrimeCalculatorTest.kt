@@ -70,9 +70,9 @@ class WPrimeCalculatorTest {
     private fun invokePrivateMethod(name: String, vararg args: Any): Any? {
         val argTypes = args.map {
             when (it) {
-                is java.lang.Double -> Double::class.javaPrimitiveType!!
-                is java.lang.Long -> Long::class.javaPrimitiveType!!
-                is java.lang.Boolean -> Boolean::class.javaPrimitiveType!!
+                is Double -> Double::class.javaPrimitiveType!!
+                is Long -> Long::class.javaPrimitiveType!!
+                is Boolean -> Boolean::class.javaPrimitiveType!!
                 else -> it::class.java
             }
         }.toTypedArray()
