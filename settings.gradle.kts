@@ -1,6 +1,9 @@
 fun getLocalProperty(key: String, file: String = "local.properties"): String? {
     val properties = java.util.Properties()
     val localProperties = File(file)
+    // #region agent log
+    println("DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=S1|location=settings.gradle.kts|getLocalProperty|key=$key|fileExists=${localProperties.isFile}")
+    // #endregion
     if (localProperties.isFile) {
         java.io.InputStreamReader(java.io.FileInputStream(localProperties), Charsets.UTF_8).use { reader ->
             properties.load(reader)
@@ -36,6 +39,9 @@ develocity {
 }
 
 val env: MutableMap<String, String> = System.getenv()
+// #region agent log
+println("DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=S2|location=settings.gradle.kts|envPresence|hasGprUser=${env.containsKey("GPR_USER")}|hasGprKey=${env.containsKey("GPR_KEY")}")
+// #endregion
 val gprUser = if(env.containsKey("GPR_USER")) env["GPR_USER"] else getLocalProperty("gpr.user")
 val gprKey = if(env.containsKey("GPR_KEY")) env["GPR_KEY"] else getLocalProperty("gpr.key")
 
