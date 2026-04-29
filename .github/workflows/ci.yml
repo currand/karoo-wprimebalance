@@ -11,15 +11,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-    - name: Agent debug instrumentation
-      run: |
-        # #region agent log
-        NOW_MS=$(($(date +%s) * 1000))
-        curl -sS -X POST "http://127.0.0.1:7547/ingest/55ceb495-3edd-407f-9249-26afd84fd7f9" -H "Content-Type: application/json" -H "X-Debug-Session-Id: bd86f8" -d "{\"sessionId\":\"bd86f8\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H1\",\"location\":\".github/workflows/ci.yml\",\"message\":\"checkout_action_version\",\"data\":{\"uses\":\"actions/checkout@v5\"},\"timestamp\":$NOW_MS}" || true
-        curl -sS -X POST "http://127.0.0.1:7547/ingest/55ceb495-3edd-407f-9249-26afd84fd7f9" -H "Content-Type: application/json" -H "X-Debug-Session-Id: bd86f8" -d "{\"sessionId\":\"bd86f8\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H2\",\"location\":\".github/workflows/ci.yml\",\"message\":\"setup_java_action_version\",\"data\":{\"uses\":\"actions/setup-java@v5\"},\"timestamp\":$NOW_MS}" || true
-        curl -sS -X POST "http://127.0.0.1:7547/ingest/55ceb495-3edd-407f-9249-26afd84fd7f9" -H "Content-Type: application/json" -H "X-Debug-Session-Id: bd86f8" -d "{\"sessionId\":\"bd86f8\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\".github/workflows/ci.yml\",\"message\":\"runner_node_version_visible_before_actions\",\"data\":{\"value\":\"$(node --version)\"},\"timestamp\":$NOW_MS}" || true
-        curl -sS -X POST "http://127.0.0.1:7547/ingest/55ceb495-3edd-407f-9249-26afd84fd7f9" -H "Content-Type: application/json" -H "X-Debug-Session-Id: bd86f8" -d "{\"sessionId\":\"bd86f8\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H4\",\"location\":\".github/workflows/ci.yml\",\"message\":\"force_node24_env\",\"data\":{\"value\":\"${FORCE_JAVASCRIPT_ACTIONS_TO_NODE24:-unset}\"},\"timestamp\":$NOW_MS}" || true
-        # #endregion
     - uses: actions/checkout@v5
     - name: Set up JDK 17
       uses: actions/setup-java@v5
