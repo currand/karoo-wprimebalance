@@ -1,10 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
     kotlin("plugin.serialization") version "2.0.20"
     jacoco
 }
+
+val appVersionCode = 26042901
+val appVersionName = "0.2.9"
 
 android {
     namespace = "com.currand60.wprimebalance"
@@ -15,8 +17,8 @@ android {
         applicationId = "com.currand60.wprimebalance"
         minSdk = 23
         targetSdk = 34
-        versionCode = 26042803
-        versionName = "0.2.8"
+        versionCode = appVersionCode
+        versionName = appVersionName
         signingConfig = signingConfigs.getByName("debug")
     }
 
@@ -58,15 +60,15 @@ tasks.register("generateManifest") {
             "label" to "W' Balance",
             "packageName" to "com.currand60.wprimebalance",
             "latestApkUrl" to "https://github.com/currand/karoo-wprimebalance/releases/latest/download/app-release.apk",
-            "latestVersion" to android.defaultConfig.versionName,
-            "latestVersionCode" to android.defaultConfig.versionCode,
+            "latestVersion" to appVersionName,
+            "latestVersionCode" to appVersionCode,
             "developer" to "currand60",
             "description" to "Calculates W' Balance during the ride and displays it in several formats",
         )
 
         val gson = groovy.json.JsonBuilder(manifest).toPrettyString()
         manifestFile.writeText(gson)
-        println("Generated manifest.json with version ${android.defaultConfig.versionName} (${android.defaultConfig.versionCode})")
+        println("Generated manifest.json with version $appVersionName ($appVersionCode)")
     }
 }
 
@@ -97,6 +99,7 @@ dependencies {
     implementation(libs.mockk)
     implementation(libs.androidx.navigation.runtime.android)
     testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.koin.android)
