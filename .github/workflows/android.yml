@@ -17,7 +17,7 @@ jobs:
       run: |
         # #region agent log
         echo "DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=H1|location=.github/workflows/android.yml|message=checkout_action_version|data=actions/checkout@v5"
-        echo "DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=H2|location=.github/workflows/android.yml|message=setup_java_action_version|data=actions/setup-java@v4"
+        echo "DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=H2|location=.github/workflows/android.yml|message=setup_java_action_version|data=actions/setup-java@v5"
         echo "DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=H3|location=.github/workflows/android.yml|message=upload_artifact_action_version|data=actions/upload-artifact@v4"
         echo "DBG|sessionId=bd86f8|runId=pre-fix|hypothesisId=H4|location=.github/workflows/android.yml|message=runner_node_version|data=$(node --version)"
         # #endregion
@@ -35,7 +35,7 @@ jobs:
         echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
     - uses: actions/checkout@v5
     - name: set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
