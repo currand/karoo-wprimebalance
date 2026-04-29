@@ -15,7 +15,7 @@ jobs:
   comment-on-fixed:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Fetch all history for all tags and branches
       - name: Find closed issues/PRs and comment
